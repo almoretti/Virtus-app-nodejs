@@ -1,0 +1,117 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String     @id @default(cuid())
+  email         String     @unique
+  name          String?
+  image         String?
+  role          Role       @default(CUSTOMER_SERVICE)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  
+  technician    Technician?
+  bookings      Booking[]  @relation("CreatedBy")
+}
+
+model Technician {
+  id            String     @id @default(cuid())
+  user          User       @relation(fields: [userId], references: [id])
+  userId        String     @unique
+  color         String     @default("#3B82F6") // Default blue color
+  active        Boolean    @default(true)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  
+  bookings      Booking[]
+  availability  TechnicianAvailability[]
+}
+
+model Customer {
+  id            String     @id @default(cuid())
+  name          String
+  phone         String
+  email         String?
+  address       String
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  
+  bookings      Booking[]
+}
+
+model InstallationType {
+  id            String     @id @default(cuid())
+  name          String     @unique
+  description   String?
+  duration      Int        @default(120) // Duration in minutes
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  
+  bookings      Booking[]
+}
+
+model Booking {
+  id                String     @id @default(cuid())
+  date              DateTime
+  slot              TimeSlot
+  status            BookingStatus @default(SCHEDULED)
+  notes             String?
+  
+  customer          Customer   @relation(fields: [customerId], references: [id])
+  customerId        String
+  
+  technician        Technician @relation(fields: [technicianId], references: [id])
+  technicianId      String
+  
+  installationType  InstallationType @relation(fields: [installationTypeId], references: [id])
+  installationTypeId String
+  
+  createdBy         User       @relation("CreatedBy", fields: [createdById], references: [id])
+  createdById       String
+  
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  
+  @@unique([date, slot, technicianId])
+}
+
+model TechnicianAvailability {
+  id            String     @id @default(cuid())
+  technician    Technician @relation(fields: [technicianId], references: [id])
+  technicianId  String
+  date          DateTime
+  available     Boolean    @default(true)
+  reason        String?    // For time off reasons
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  
+  @@unique([technicianId, date])
+}
+
+enum Role {
+  ADMIN
+  CUSTOMER_SERVICE
+  TECHNICIAN
+}
+
+enum TimeSlot {
+  MORNING    // 10-12
+  AFTERNOON  // 13-15
+  EVENING    // 16-18
+}
+
+enum BookingStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
