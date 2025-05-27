@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Calendar, Home, Settings, User, List, Users, UserCog, ChevronUp } from "lucide-react"
+import { Calendar, Home, Settings, User, List, Users, UserCog, ChevronUp, MessageCircle } from "lucide-react"
 import { usePathname } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
 
@@ -41,6 +41,11 @@ const navigation = {
       title: "Appuntamenti",
       icon: List,
       href: "/appointments",
+    },
+    {
+      title: "Chat Assistenza",
+      icon: MessageCircle,
+      href: "/chat",
     },
   ],
   settings: [
