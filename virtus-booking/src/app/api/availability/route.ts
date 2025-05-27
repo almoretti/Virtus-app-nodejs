@@ -1,23 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { TimeSlot } from '@prisma/client'
-import { startOfDay, endOfDay } from 'date-fns'
+import { startOfDay, endOfDay, addDays, eachDayOfInterval } from 'date-fns'
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
     const dateStr = searchParams.get('date')
+    const fromDateStr = searchParams.get('from')
+    const toDateStr = searchParams.get('to')
     
-    if (!dateStr) {
+    let dayStart: Date, dayEnd: Date
+    let isDateRange = false
+    
+    if (dateStr) {
+      // Single date query
+      const date = new Date(dateStr)
+      dayStart = startOfDay(date)
+      dayEnd = endOfDay(date)
+    } else if (fromDateStr && toDateStr) {
+      // Date range query
+      const fromDate = new Date(fromDateStr)
+      const toDate = new Date(toDateStr)
+      
+      if (toDate < fromDate) {
+        return NextResponse.json(
+          { error: 'La data di fine deve essere successiva alla data di inizio' },
+          { status: 400 }
+        )
+      }
+      
+      dayStart = startOfDay(fromDate)
+      dayEnd = endOfDay(toDate)
+      isDateRange = true
+    } else {
       return NextResponse.json(
-        { error: 'Parametro data richiesto' },
+        { error: 'Parametro data richiesto (date oppure from+to)' },
         { status: 400 }
       )
     }
-    
-    const date = new Date(dateStr)
-    const dayStart = startOfDay(date)
-    const dayEnd = endOfDay(date)
     
     // Get all active technicians
     const technicians = await prisma.technician.findMany({
@@ -72,36 +93,95 @@ export async function GET(request: NextRequest) {
       }
     })
     
-    // Format response with technician details
-    const formattedSlots = {
-      date: dateStr,
-      slots: {
-        '10-12': {} as Record<string, { available: boolean; id: string; name: string }>,
-        '13-15': {} as Record<string, { available: boolean; id: string; name: string }>,
-        '16-18': {} as Record<string, { available: boolean; id: string; name: string }>,
-      }
-    }
-    
-    // Map enum values to time ranges
-    const slotMapping = {
-      [TimeSlot.MORNING]: '10-12',
-      [TimeSlot.AFTERNOON]: '13-15',
-      [TimeSlot.EVENING]: '16-18',
-    }
-    
-    Object.entries(slots).forEach(([slotEnum, techAvailability]) => {
-      const timeRange = slotMapping[slotEnum as TimeSlot]
-      technicians.forEach(tech => {
-        const techName = tech.user.name || tech.user.email
-        formattedSlots.slots[timeRange][techName] = {
-          available: techAvailability[tech.id],
+    if (isDateRange) {
+      // For date range queries, return day-by-day breakdown
+      const fromDate = new Date(fromDateStr!)
+      const toDate = new Date(toDateStr!)
+      const dateRange = eachDayOfInterval({ start: fromDate, end: toDate })
+      
+      const rangeResponse = {
+        from: fromDateStr,
+        to: toDateStr,
+        technicians: technicians.map(tech => ({
           id: tech.id,
-          name: techName
+          name: tech.user.name || tech.user.email,
+          color: tech.color
+        })),
+        availability: {} as Record<string, Record<string, Record<string, boolean>>>
+      }
+      
+      // For each date in range, calculate availability
+      for (const currentDate of dateRange) {
+        const currentDayStart = startOfDay(currentDate)
+        const currentDayEnd = endOfDay(currentDate)
+        const dateKey = currentDate.toISOString().split('T')[0]
+        
+        // Get bookings for this specific date
+        const dayBookings = await prisma.booking.findMany({
+          where: {
+            date: {
+              gte: currentDayStart,
+              lte: currentDayEnd
+            },
+            status: {
+              in: ['SCHEDULED', 'COMPLETED']
+            }
+          }
+        })
+        
+        // Get availability restrictions for this date
+        const dayAvailability = await prisma.technicianAvailability.findMany({
+          where: {
+            date: {
+              gte: currentDayStart,
+              lte: currentDayEnd
+            },
+            available: false
+          }
+        })
+        
+        rangeResponse.availability[dateKey] = {}
+        
+        technicians.forEach(tech => {
+          const isOnTimeOff = dayAvailability.some(a => a.technicianId === tech.id)
+          
+          rangeResponse.availability[dateKey][tech.id] = {
+            'MORNING': !isOnTimeOff && !dayBookings.some(b => b.technicianId === tech.id && b.slot === TimeSlot.MORNING),
+            'AFTERNOON': !isOnTimeOff && !dayBookings.some(b => b.technicianId === tech.id && b.slot === TimeSlot.AFTERNOON),
+            'EVENING': !isOnTimeOff && !dayBookings.some(b => b.technicianId === tech.id && b.slot === TimeSlot.EVENING)
+          }
+        })
+      }
+      
+      return NextResponse.json(rangeResponse)
+    } else {
+      // Single date response (maintain backward compatibility)
+      const formattedSlots = {
+        date: dateStr,
+        technicians: technicians.map(tech => ({
+          id: tech.id,
+          name: tech.user.name || tech.user.email,
+          color: tech.color
+        })),
+        availability: {
+          'MORNING': {} as Record<string, boolean>,
+          'AFTERNOON': {} as Record<string, boolean>,
+          'EVENING': {} as Record<string, boolean>
         }
+      }
+      
+      // Build availability for single date
+      technicians.forEach(tech => {
+        const isOnTimeOff = availability.some(a => a.technicianId === tech.id)
+        
+        Object.values(TimeSlot).forEach(slot => {
+          const isBooked = bookings.some(b => b.technicianId === tech.id && b.slot === slot)
+          formattedSlots.availability[slot][tech.id] = !isOnTimeOff && !isBooked
+        })
       })
-    })
-    
-    return NextResponse.json(formattedSlots)
+      
+      return NextResponse.json(formattedSlots)
+    }
     
   } catch (error) {
     console.error('Error checking availability:', error)

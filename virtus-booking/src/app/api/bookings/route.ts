@@ -25,12 +25,59 @@ export async function GET(request: NextRequest) {
       )
     }
     
+    // Parse query parameters
+    const searchParams = request.nextUrl.searchParams
+    const dateStr = searchParams.get('date')
+    const fromDateStr = searchParams.get('from')
+    const toDateStr = searchParams.get('to')
+    const statusFilter = searchParams.get('status')
+    const technicianIdFilter = searchParams.get('technicianId')
+    
+    // Build where clause
+    const whereClause: any = {
+      status: {
+        in: ['SCHEDULED', 'COMPLETED', 'CANCELLED']
+      }
+    }
+    
+    // Date filtering
+    if (dateStr) {
+      const date = new Date(dateStr)
+      const dayStart = startOfDay(date)
+      const dayEnd = endOfDay(date)
+      whereClause.date = {
+        gte: dayStart,
+        lte: dayEnd
+      }
+    } else if (fromDateStr && toDateStr) {
+      const fromDate = new Date(fromDateStr)
+      const toDate = new Date(toDateStr)
+      
+      if (toDate < fromDate) {
+        return NextResponse.json(
+          { error: 'La data di fine deve essere successiva alla data di inizio' },
+          { status: 400 }
+        )
+      }
+      
+      whereClause.date = {
+        gte: startOfDay(fromDate),
+        lte: endOfDay(toDate)
+      }
+    }
+    
+    // Status filtering
+    if (statusFilter && ['SCHEDULED', 'COMPLETED', 'CANCELLED'].includes(statusFilter)) {
+      whereClause.status = statusFilter
+    }
+    
+    // Technician filtering
+    if (technicianIdFilter) {
+      whereClause.technicianId = technicianIdFilter
+    }
+    
     const bookings = await prisma.booking.findMany({
-      where: {
-        status: {
-          in: ['SCHEDULED', 'COMPLETED', 'CANCELLED']
-        }
-      },
+      where: whereClause,
       include: {
         customer: true,
         technician: {

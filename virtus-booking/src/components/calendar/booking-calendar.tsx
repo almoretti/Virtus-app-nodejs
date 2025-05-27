@@ -52,12 +52,12 @@ interface AvailabilitySlot {
   available: boolean
 }
 
-// Function to translate time slots
+// Function to translate time slots to actual times
 const translateTimeSlot = (slot: string): string => {
   const translations: Record<string, string> = {
-    'MORNING': 'MATTINA',
-    'AFTERNOON': 'POMERIGGIO', 
-    'EVENING': 'SERA'
+    'MORNING': '10:00 - 12:00',
+    'AFTERNOON': '13:00 - 15:00', 
+    'EVENING': '16:00 - 18:00'
   }
   return translations[slot] || slot
 }
@@ -201,27 +201,35 @@ export function BookingCalendar() {
         const slots: AvailabilitySlot[] = []
         const currentHour = now.getHours()
         
-        Object.entries(data.slots).forEach(([timeSlot, technicians]) => {
-          // For today, filter out past time slots
-          if (clickedDate.toDateString() === now.toDateString()) {
-            const slotHour = timeSlot === 'MORNING' ? 10 : timeSlot === 'AFTERNOON' ? 13 : 16
-            if (slotHour <= currentHour) {
-              return // Skip past time slots for today
+        // Handle new API response format
+        if (data.availability) {
+          Object.entries(data.availability).forEach(([timeSlot, technicianAvailability]) => {
+            // For today, filter out past time slots
+            if (clickedDate.toDateString() === now.toDateString()) {
+              const slotHour = timeSlot === 'MORNING' ? 10 : timeSlot === 'AFTERNOON' ? 13 : 16
+              if (slotHour <= currentHour) {
+                return // Skip past time slots for today
+              }
             }
-          }
-          
-          Object.entries(technicians as Record<string, { available: boolean; id: string; name: string }>).forEach(([_, techInfo]) => {
-            if (techInfo.available) {
-              slots.push({
-                date: data.date,
-                slot: timeSlot,
-                technicianId: techInfo.id,
-                technicianName: techInfo.name,
-                available: true
-              })
-            }
+            
+            // Find technician info for available technicians
+            Object.entries(technicianAvailability as Record<string, boolean>).forEach(([technicianId, isAvailable]) => {
+              if (isAvailable) {
+                // Find technician name from the technicians array
+                const techInfo = data.technicians?.find((tech: any) => tech.id === technicianId)
+                if (techInfo) {
+                  slots.push({
+                    date: data.date,
+                    slot: timeSlot,
+                    technicianId: technicianId,
+                    technicianName: techInfo.name,
+                    available: true
+                  })
+                }
+              }
+            })
           })
-        })
+        }
         
         setAvailability(slots)
       }

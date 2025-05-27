@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Calendar, Home, Settings, User, List, Users, UserCog, ChevronUp, MessageCircle } from "lucide-react"
+import { Calendar, Home, Settings, User, List, Users, UserCog, ChevronUp, MessageCircle, BookOpen } from "lucide-react"
 import { usePathname } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
 
@@ -68,6 +68,12 @@ const navigation = {
           title: "Gestione Tecnici",
           href: "/technicians",
           icon: UserCog,
+          adminOnly: true,
+        },
+        {
+          title: "Documentazione API",
+          href: "/docs",
+          icon: BookOpen,
           adminOnly: true,
         },
       ],
