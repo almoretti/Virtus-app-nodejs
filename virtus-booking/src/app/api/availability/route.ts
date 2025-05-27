@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     
     if (!dateStr) {
       return NextResponse.json(
-        { error: 'Date parameter is required' },
+        { error: 'Parametro data richiesto' },
         { status: 400 }
       )
     }
@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error checking availability:', error)
     return NextResponse.json(
-      { error: 'Failed to check availability' },
+      { error: 'Controllo disponibilità fallito' },
       { status: 500 }
     )
   }

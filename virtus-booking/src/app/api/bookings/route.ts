@@ -9,6 +9,9 @@ const slotMapping: Record<string, TimeSlot> = {
   '10-12': TimeSlot.MORNING,
   '13-15': TimeSlot.AFTERNOON,
   '16-18': TimeSlot.EVENING,
+  'MORNING': TimeSlot.MORNING,
+  'AFTERNOON': TimeSlot.AFTERNOON,
+  'EVENING': TimeSlot.EVENING,
 }
 
 export async function GET(request: NextRequest) {
@@ -17,7 +20,7 @@ export async function GET(request: NextRequest) {
     
     if (!session?.user) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Non autorizzato' },
         { status: 401 }
       )
     }
@@ -25,7 +28,7 @@ export async function GET(request: NextRequest) {
     const bookings = await prisma.booking.findMany({
       where: {
         status: {
-          in: ['SCHEDULED', 'COMPLETED']
+          in: ['SCHEDULED', 'COMPLETED', 'CANCELLED']
         }
       },
       include: {
@@ -46,7 +49,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error fetching bookings:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch bookings' },
+      { error: 'Recupero prenotazioni fallito' },
       { status: 500 }
     )
   }
@@ -57,35 +60,65 @@ export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions)
     
     if (!session?.user) {
+      console.error('Unauthorized: No session found')
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Non autorizzato' },
         { status: 401 }
       )
     }
     
     const body = await request.json()
+    console.log('Received booking request:', body)
     const { date, slot, technicianId, customer, installationType } = body
     
     // Validate required fields
     if (!date || !slot || !technicianId || !customer || !installationType) {
+      console.error('Missing required fields:', { date, slot, technicianId, customer, installationType })
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Campi obbligatori mancanti' },
         { status: 400 }
       )
     }
     
     // Convert slot string to enum
     const timeSlot = slotMapping[slot]
+    console.log('Slot mapping:', slot, '->', timeSlot)
     if (!timeSlot) {
+      console.error('Invalid time slot:', slot)
       return NextResponse.json(
-        { error: 'Invalid time slot' },
+        { error: 'Fascia oraria non valida' },
         { status: 400 }
       )
     }
     
     const bookingDate = new Date(date)
+    const now = new Date()
     const dayStart = startOfDay(bookingDate)
     const dayEnd = endOfDay(bookingDate)
+    
+    // Check if booking date is in the past
+    if (bookingDate < now) {
+      // If it's today, check the time slot
+      if (dayStart.toDateString() === now.toDateString()) {
+        const currentHour = now.getHours()
+        const slotHour = timeSlot === TimeSlot.MORNING ? 10 : 
+                        timeSlot === TimeSlot.AFTERNOON ? 13 : 16
+        
+        if (slotHour <= currentHour) {
+          console.error('Attempted to book past time slot:', timeSlot, 'at', currentHour)
+          return NextResponse.json(
+            { error: 'Non è possibile prenotare appuntamenti nel passato' },
+            { status: 400 }
+          )
+        }
+      } else {
+        console.error('Attempted to book past date:', date)
+        return NextResponse.json(
+          { error: 'Cannot book appointments in the past' },
+          { status: 400 }
+        )
+      }
+    }
     
     // Check if technician exists and is active
     const technician = await prisma.technician.findUnique({
@@ -94,7 +127,7 @@ export async function POST(request: NextRequest) {
     
     if (!technician || !technician.active) {
       return NextResponse.json(
-        { error: 'Invalid technician' },
+        { error: 'Tecnico non valido' },
         { status: 400 }
       )
     }
@@ -116,7 +149,7 @@ export async function POST(request: NextRequest) {
     
     if (existingBooking) {
       return NextResponse.json(
-        { error: 'Slot already booked' },
+        { error: 'Fascia oraria già prenotata' },
         { status: 409 }
       )
     }
@@ -135,7 +168,7 @@ export async function POST(request: NextRequest) {
     
     if (techAvailability) {
       return NextResponse.json(
-        { error: 'Technician not available on this date' },
+        { error: 'Tecnico non disponibile in questa data' },
         { status: 409 }
       )
     }
@@ -223,7 +256,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error creating booking:', error)
     return NextResponse.json(
-      { error: 'Failed to create booking' },
+      { error: 'Creazione prenotazione fallita' },
       { status: 500 }
     )
   }

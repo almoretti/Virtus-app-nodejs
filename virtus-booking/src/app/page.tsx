@@ -2,6 +2,7 @@ import { BookingCalendar } from '@/components/calendar/booking-calendar'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
+import DashboardClientLayout from './dashboard-layout'
 
 export default async function Home() {
   const session = await getServerSession(authOptions)
@@ -11,11 +12,11 @@ export default async function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-background">
-      <div className="container mx-auto py-8">
-        <h1 className="text-3xl font-bold mb-8">Virtus Booking System</h1>
+    <DashboardClientLayout>
+      <div className="space-y-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Calendario Prenotazioni</h1>
         <BookingCalendar />
       </div>
-    </main>
+    </DashboardClientLayout>
   )
 }

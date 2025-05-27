@@ -5,6 +5,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 This is a calendar-based booking management system for water filtration technicians built with Next.js 15, TypeScript, Prisma, and NextAuth.js.
 
+**IMPORTANT: The entire application interface is in Italian language. All user-facing text, labels, messages, and error messages are in Italian.**
+
 ## Key Commands
 
 ### Development
@@ -48,6 +50,7 @@ All APIs in `src/app/api/` follow RESTful patterns:
 - Uses FullCalendar for calendar rendering with custom event handling
 - Modal-based booking creation with real-time availability checking
 - Technician color coding for visual distinction
+- **All UI text is in Italian** - includes navigation, forms, buttons, error messages, and status indicators
 
 ## Development Notes
 
@@ -69,5 +72,8 @@ GOOGLE_CLIENT_SECRET="your-client-secret"
 ### Common Patterns
 - All database queries use Prisma client from `src/lib/db.ts`
 - Auth checks use `getServerSession(authOptions)` from `src/lib/auth.ts`
-- Date/time handling uses date-fns library
+- Date/time handling uses date-fns library with Italian locale
 - Form validation happens both client-side and server-side
+- **Language**: All user-facing text must be in Italian
+- **Date format**: Italian convention "d MMMM yyyy" (e.g., "5 gennaio 2025")
+- **Time format**: 24-hour format "HH:mm" (e.g., "14:30")

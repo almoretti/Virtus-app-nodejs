@@ -57,3 +57,77 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* FullCalendar Custom Styles */
+@layer components {
+  /* Make events look like cards */
+  .fc-timegrid-event {
+    @apply rounded-lg shadow-sm border-2 !important;
+    border-left-width: 4px !important;
+  }
+  
+  .fc-timegrid-event-harness {
+    margin: 2px 4px !important;
+  }
+  
+  /* Ensure text is visible on colored backgrounds */
+  .fc-event-title,
+  .fc-event-time {
+    @apply text-white font-medium;
+  }
+  
+  /* Hover effect for events */
+  .fc-event:hover {
+    @apply shadow-md transform scale-105 transition-all cursor-pointer;
+  }
+  
+  /* Style the time grid */
+  .fc-timegrid-slot {
+    @apply border-gray-200;
+    height: 60px !important;
+  }
+  
+  .fc-timegrid-slot-minor {
+    @apply border-gray-100;
+  }
+  
+  /* Style the day headers */
+  .fc-col-header-cell {
+    @apply bg-gray-50 font-semibold text-gray-700;
+  }
+  
+  /* Current time indicator */
+  .fc-timegrid-now-indicator-line {
+    @apply border-red-500 border-2;
+  }
+  
+  /* Remove default event dot */
+  .fc-daygrid-event-dot {
+    display: none;
+  }
+  
+  /* Month view event styling */
+  .fc-daygrid-event {
+    @apply rounded px-2 py-1 text-white font-medium text-sm;
+    border: none !important;
+  }
+  
+  /* Past dates styling */
+  .fc-past-date {
+    background-color: rgba(0, 0, 0, 0.05) !important;
+    pointer-events: none;
+  }
+  
+  .fc-past-date .fc-daygrid-day-number {
+    color: rgba(0, 0, 0, 0.3);
+  }
+  
+  .fc-past-date .fc-col-header-cell-cushion {
+    color: rgba(0, 0, 0, 0.3);
+  }
+  
+  /* Past time slots in week/day view */
+  .fc-timegrid-col.fc-day-past {
+    background-color: rgba(0, 0, 0, 0.02);
+  }
+}

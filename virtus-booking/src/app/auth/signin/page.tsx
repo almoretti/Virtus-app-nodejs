@@ -6,11 +6,11 @@ import { Button } from '@/components/ui/button'
 export default function SignIn() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="max-w-md w-full space-y-8 p-8 bg-card rounded-lg shadow-lg">
+      <div className="max-w-md w-full space-y-6 p-4 sm:p-6 md:p-8 bg-card rounded-lg shadow-lg mx-4">
         <div className="text-center">
-          <h2 className="text-3xl font-bold">Virtus Booking System</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold">Sistema di Prenotazione Virtus</h2>
           <p className="mt-2 text-muted-foreground">
-            Sign in to manage technician bookings
+            Accedi per gestire le prenotazioni dei tecnici
           </p>
         </div>
         
@@ -19,11 +19,11 @@ export default function SignIn() {
           className="w-full"
           size="lg"
         >
-          Sign in with Google
+          Accedi con Google
         </Button>
         
         <p className="text-sm text-center text-muted-foreground">
-          Only authorized users can access this system
+          Solo gli utenti autorizzati possono accedere a questo sistema
         </p>
       </div>
     </div>
