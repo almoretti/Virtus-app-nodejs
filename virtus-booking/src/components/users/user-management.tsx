@@ -7,7 +7,18 @@ import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Role } from "@prisma/client"
 import { useSession } from "next-auth/react"
-import { Plus, Mail, Copy, X } from "lucide-react"
+import { Plus, Mail, Copy, X, Edit2, Trash2 } from "lucide-react"
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer"
+import { useConfirm } from '@/hooks/use-confirm'
+import { toast } from 'sonner'
 
 interface User {
   id: string
@@ -33,11 +44,19 @@ interface Invitation {
 
 export function UserManagement() {
   const { data: session } = useSession()
+  const { confirm, ConfirmDialog } = useConfirm()
   const [users, setUsers] = useState<User[]>([])
   const [invitations, setInvitations] = useState<Invitation[]>([])
   const [loading, setLoading] = useState(true)
   const [showInviteDialog, setShowInviteDialog] = useState(false)
+  const [showEditDrawer, setShowEditDrawer] = useState(false)
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [inviteForm, setInviteForm] = useState({
+    email: "",
+    role: Role.CUSTOMER_SERVICE,
+  })
+  const [editForm, setEditForm] = useState({
+    name: "",
     email: "",
     role: Role.CUSTOMER_SERVICE,
   })
@@ -106,14 +125,14 @@ export function UserManagement() {
         fetchInvitations()
         setInviteForm({ email: "", role: Role.CUSTOMER_SERVICE })
         setShowInviteDialog(false)
-        alert("Invito inviato con successo! L'utente riceverà un'email con le istruzioni.")
+        toast.success("Invito inviato! L'utente riceverà un'email con le istruzioni.")
       } else {
         const error = await response.json()
-        alert(error.error || "Errore invio invito")
+        toast.error(error.error || "Errore invio invito")
       }
     } catch (error) {
       console.error("Error sending invitation:", error)
-      alert("Errore invio invito")
+      toast.error("Errore invio invito")
     }
   }
 
@@ -128,6 +147,71 @@ export function UserManagement() {
       }
     } catch (error) {
       console.error("Error deleting invitation:", error)
+    }
+  }
+
+  const handleEditUser = (user: User) => {
+    setSelectedUser(user)
+    setEditForm({
+      name: user.name || "",
+      email: user.email,
+      role: user.role,
+    })
+    setShowEditDrawer(true)
+  }
+
+  const handleUpdateUser = async () => {
+    if (!selectedUser) return
+
+    try {
+      const response = await fetch(`/api/users/${selectedUser.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(editForm),
+      })
+
+      if (response.ok) {
+        setShowEditDrawer(false)
+        fetchUsers()
+        toast.success("Utente aggiornato con successo")
+      } else {
+        const error = await response.json()
+        toast.error(error.error || "Errore durante l'aggiornamento dell'utente")
+      }
+    } catch (error) {
+      console.error("Error updating user:", error)
+      toast.error("Errore durante l'aggiornamento dell'utente")
+    }
+  }
+
+  const handleDeleteUser = async (userId: string) => {
+    const confirmed = await confirm({
+      title: "Elimina Utente",
+      description: "Sei sicuro di voler eliminare questo utente? Questa azione non può essere annullata.",
+      confirmText: "Elimina",
+      cancelText: "Annulla",
+      destructive: true,
+    })
+
+    if (!confirmed) return
+
+    try {
+      const response = await fetch(`/api/users/${userId}`, {
+        method: "DELETE",
+      })
+
+      if (response.ok) {
+        fetchUsers()
+        toast.success("Utente eliminato con successo")
+      } else {
+        const error = await response.json()
+        toast.error(error.error || "Errore durante l'eliminazione dell'utente")
+      }
+    } catch (error) {
+      console.error("Error deleting user:", error)
+      toast.error("Errore durante l'eliminazione dell'utente")
     }
   }
 
@@ -165,7 +249,7 @@ export function UserManagement() {
                   <p className="text-sm text-gray-500">{user.email}</p>
                 </div>
                 <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                  <div>
+                  <div className="flex items-center gap-2">
                     <Label htmlFor={`role-${user.id}`} className="sr-only">
                       Ruolo
                     </Label>
@@ -176,6 +260,7 @@ export function UserManagement() {
                         updateUserRole(user.id, e.target.value as Role)
                       }
                       className="mt-1 block w-full sm:w-auto rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 text-sm"
+                      disabled={user.id === session?.user?.id}
                     >
                       <option value={Role.ADMIN}>Amministratore</option>
                       <option value={Role.CUSTOMER_SERVICE}>
@@ -183,12 +268,31 @@ export function UserManagement() {
                       </option>
                       <option value={Role.TECHNICIAN}>Tecnico</option>
                     </select>
+                    {user.technician && (
+                      <span className="text-xs text-gray-500">
+                        (Ha profilo tecnico)
+                      </span>
+                    )}
                   </div>
-                  {user.technician && (
-                    <span className="text-xs text-gray-500">
-                      (Ha profilo tecnico)
-                    </span>
-                  )}
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleEditUser(user)}
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
+                    {user.id !== session?.user?.id && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDeleteUser(user.id)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
@@ -297,6 +401,73 @@ export function UserManagement() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Edit User Drawer */}
+      <Drawer open={showEditDrawer} onOpenChange={setShowEditDrawer}>
+        <DrawerContent>
+          <div className="mx-auto w-full max-w-sm">
+            <DrawerHeader>
+              <DrawerTitle>Modifica Utente</DrawerTitle>
+              <DrawerDescription>
+                Aggiorna i dati dell'utente
+              </DrawerDescription>
+            </DrawerHeader>
+            
+            <div className="px-4 pb-4 space-y-4">
+              <div>
+                <Label htmlFor="edit-name">Nome</Label>
+                <Input
+                  id="edit-name"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  placeholder="Nome utente"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="edit-email">Email</Label>
+                <Input
+                  id="edit-email"
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  required
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="edit-role">Ruolo</Label>
+                <select
+                  id="edit-role"
+                  value={editForm.role}
+                  onChange={(e) => setEditForm({ ...editForm, role: e.target.value as Role })}
+                  className="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 text-sm"
+                  disabled={selectedUser?.id === session?.user?.id}
+                >
+                  <option value={Role.ADMIN}>Amministratore</option>
+                  <option value={Role.CUSTOMER_SERVICE}>Servizio Clienti</option>
+                  <option value={Role.TECHNICIAN}>Tecnico</option>
+                </select>
+              </div>
+            </div>
+            
+            <DrawerFooter>
+              <div className="flex gap-2 w-full">
+                <DrawerClose asChild>
+                  <Button variant="outline" className="flex-1">
+                    Annulla
+                  </Button>
+                </DrawerClose>
+                <Button onClick={handleUpdateUser} className="flex-1">
+                  Aggiorna
+                </Button>
+              </div>
+            </DrawerFooter>
+          </div>
+        </DrawerContent>
+      </Drawer>
+
+      <ConfirmDialog />
     </div>
   )
 }

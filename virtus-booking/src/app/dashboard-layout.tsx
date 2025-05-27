@@ -1,48 +1,26 @@
 "use client"
 
-import { Sidebar } from "@/components/navigation/sidebar"
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Menu, X } from "lucide-react"
+import { AppSidebar } from "@/components/navigation/app-sidebar"
+import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar"
 
 export default function DashboardClientLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      {/* Mobile menu button */}
-      <div className="fixed top-0 left-0 z-50 p-4 lg:hidden">
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="bg-white"
-        >
-          {isSidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </Button>
-      </div>
-
-      {/* Sidebar with mobile overlay */}
-      <div className={`${isSidebarOpen ? 'fixed inset-0 z-40 lg:relative' : 'hidden lg:block'}`}>
-        {/* Mobile overlay backdrop */}
-        {isSidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black/50 lg:hidden"
-            onClick={() => setIsSidebarOpen(false)}
-          />
-        )}
-        <Sidebar onMobileClose={() => setIsSidebarOpen(false)} />
-      </div>
-
-      <main className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8 pt-16 lg:pt-8">
-          {children}
-        </div>
-      </main>
-    </div>
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset>
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+          <SidebarTrigger className="-ml-1" />
+        </header>
+        <main className="flex-1 overflow-y-auto">
+          <div className="container mx-auto px-4 py-6">
+            {children}
+          </div>
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
   )
 }

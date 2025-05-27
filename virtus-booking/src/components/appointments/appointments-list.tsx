@@ -8,7 +8,18 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from '@/components/ui/drawer'
 import { Calendar, Clock, User, MapPin, Phone, Mail, FileText, Edit2, Trash2, Filter, Search, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
+import { useConfirm } from '@/hooks/use-confirm'
+import { toast } from 'sonner'
 
 interface Booking {
   id: string
@@ -71,6 +82,7 @@ const getStatusSelectColor = (status: string): string => {
 
 export function AppointmentsList() {
   const { data: session } = useSession()
+  const { confirm, ConfirmDialog } = useConfirm()
   const [appointments, setAppointments] = useState<Booking[]>([])
   const [filteredAppointments, setFilteredAppointments] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
@@ -105,7 +117,16 @@ export function AppointmentsList() {
       const response = await fetch('/api/bookings')
       if (response.ok) {
         const data = await response.json()
-        const sortedData = data.sort((a: Booking, b: Booking) => 
+        // Map the data to match our interface
+        const mappedData = data.map((booking: any) => ({
+          ...booking,
+          technician: {
+            id: booking.technician.id,
+            name: booking.technician.user?.name || booking.technician.user?.email || 'N/A',
+            color: booking.technician.color
+          }
+        }))
+        const sortedData = mappedData.sort((a: Booking, b: Booking) => 
           new Date(b.date).getTime() - new Date(a.date).getTime()
         )
         setAppointments(sortedData)
@@ -195,19 +216,30 @@ export function AppointmentsList() {
         await fetchAppointments()
         setShowEditDialog(false)
         setSelectedAppointment(null)
+        toast.success('Appuntamento aggiornato con successo')
       } else {
-        alert('Errore durante l\'aggiornamento dell\'appuntamento')
+        toast.error('Errore durante l\'aggiornamento dell\'appuntamento')
       }
     } catch (error) {
       console.error('Error updating appointment:', error)
-      alert('Errore durante l\'aggiornamento dell\'appuntamento')
+      toast.error('Errore durante l\'aggiornamento dell\'appuntamento')
     } finally {
       setLoading(false)
     }
   }
 
   const handleDelete = async () => {
-    if (!selectedAppointment || !confirm('Sei sicuro di voler eliminare questo appuntamento?')) return
+    if (!selectedAppointment) return
+    
+    const confirmed = await confirm({
+      title: 'Elimina Appuntamento',
+      description: 'Sei sicuro di voler eliminare questo appuntamento? Questa azione non può essere annullata.',
+      confirmText: 'Elimina',
+      cancelText: 'Annulla',
+      destructive: true
+    })
+    
+    if (!confirmed) return
 
     setLoading(true)
     try {
@@ -221,12 +253,13 @@ export function AppointmentsList() {
         await fetchAppointments()
         setShowEditDialog(false)
         setSelectedAppointment(null)
+        toast.success('Appuntamento eliminato con successo')
       } else {
-        alert('Errore durante l\'eliminazione dell\'appuntamento')
+        toast.error('Errore durante l\'eliminazione dell\'appuntamento')
       }
     } catch (error) {
       console.error('Error deleting appointment:', error)
-      alert('Errore durante l\'eliminazione dell\'appuntamento')
+      toast.error('Errore durante l\'eliminazione dell\'appuntamento')
     } finally {
       setLoading(false)
     }
@@ -236,7 +269,13 @@ export function AppointmentsList() {
     // Don't do anything if status hasn't changed
     if (newStatus === currentStatus) return
     
-    if (!confirm(`Sei sicuro di voler cambiare lo stato a ${translateStatus(newStatus)}?`)) {
+    const confirmed = await confirm({
+      description: `Sei sicuro di voler cambiare lo stato a ${translateStatus(newStatus)}?`,
+      confirmText: 'Cambia Stato',
+      cancelText: 'Annulla'
+    })
+    
+    if (!confirmed) {
       // Reset the select to current value if cancelled
       return
     }
@@ -251,13 +290,14 @@ export function AppointmentsList() {
 
       if (response.ok) {
         await fetchAppointments()
+        toast.success(`Stato aggiornato a ${translateStatus(newStatus)}`)
       } else {
         const data = await response.json()
-        alert(data.error || 'Errore durante l\'aggiornamento dello stato')
+        toast.error(data.error || 'Errore durante l\'aggiornamento dello stato')
       }
     } catch (error) {
       console.error('Error updating status:', error)
-      alert('Errore durante l\'aggiornamento dello stato')
+      toast.error('Errore durante l\'aggiornamento dello stato')
     } finally {
       setLoading(false)
     }
@@ -362,27 +402,22 @@ export function AppointmentsList() {
               key={appointment.id}
               className="bg-white p-4 sm:p-6 rounded-lg shadow hover:shadow-md transition-shadow"
             >
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
-                <div className="flex-1">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-3">
+              <div className="relative">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+                  <div className="flex-1">
+                  <div className="mb-3">
                     <h3 className="text-lg font-medium text-gray-900">
                       {appointment.customer.name}
                     </h3>
-                    <select
-                      value={appointment.status}
-                      onChange={(e) => handleStatusChange(appointment.id, e.target.value, appointment.status)}
-                      className={`px-3 py-1 rounded-md text-sm font-medium border focus:outline-none focus:ring-2 focus:ring-offset-1 ${getStatusSelectColor(appointment.status)}`}
-                      disabled={loading}
-                    >
-                      <option value="SCHEDULED">Programmato</option>
-                      <option value="COMPLETED">Completato</option>
-                      <option value="CANCELLED">Annullato</option>
-                    </select>
-                    <div 
-                      className="w-4 h-4 rounded-full"
-                      style={{ backgroundColor: appointment.technician.color }}
-                      title={appointment.technician.name}
-                    />
+                    <div className="flex items-center gap-2 mt-1">
+                      <div 
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: appointment.technician.color }}
+                      />
+                      <span className="text-sm font-medium text-gray-700">
+                        Tecnico: {appointment.technician.name}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm text-gray-600">
@@ -397,8 +432,8 @@ export function AppointmentsList() {
                     </div>
                     
                     <div className="flex items-center gap-2">
-                      <User className="h-4 w-4" />
-                      <span>{appointment.technician.name}</span>
+                      <MapPin className="h-4 w-4" />
+                      <span className="truncate">{appointment.customer.address}</span>
                     </div>
                     
                     <div className="flex items-center gap-2">
@@ -406,16 +441,14 @@ export function AppointmentsList() {
                       <span>{appointment.customer.phone}</span>
                     </div>
                     
-                    {appointment.customer.email && (
-                      <div className="flex items-center gap-2">
-                        <Mail className="h-4 w-4" />
-                        <span>{appointment.customer.email}</span>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4" />
+                      <span>{appointment.customer.email || 'Non fornita'}</span>
+                    </div>
                     
                     <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      <span className="truncate">{appointment.customer.address}</span>
+                      <FileText className="h-4 w-4" />
+                      <span>Tipo: {appointment.installationType.name}</span>
                     </div>
                   </div>
 
@@ -425,25 +458,32 @@ export function AppointmentsList() {
                       <span>{appointment.notes}</span>
                     </div>
                   )}
+                  
                 </div>
 
-                <div className="flex flex-row sm:flex-col gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleViewDetails(appointment)}
-                    className="flex-1 sm:flex-none"
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleEdit(appointment)}
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                
+                {/* Status selector at bottom right */}
+                <div className="mt-4 flex justify-end">
+                  <select
+                    value={appointment.status}
+                    onChange={(e) => handleStatusChange(appointment.id, e.target.value, appointment.status)}
+                    className={`px-3 py-1 rounded-md text-sm font-medium border focus:outline-none focus:ring-2 focus:ring-offset-1 ${getStatusSelectColor(appointment.status)}`}
+                    disabled={loading}
                   >
-                    Dettagli
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleEdit(appointment)}
-                    className="flex-1 sm:flex-none"
-                  >
-                    <Edit2 className="h-4 w-4" />
-                  </Button>
+                    <option value="SCHEDULED">Programmato</option>
+                    <option value="COMPLETED">Completato</option>
+                    <option value="CANCELLED">Annullato</option>
+                  </select>
                 </div>
               </div>
             </div>
@@ -520,14 +560,16 @@ export function AppointmentsList() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Dialog */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg md:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Modifica Appuntamento</DialogTitle>
-          </DialogHeader>
-          
-          <form onSubmit={handleUpdate} className="space-y-4">
+      {/* Edit Drawer */}
+      <Drawer open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DrawerContent>
+          <div className="mx-auto w-full max-w-2xl">
+            <DrawerHeader>
+              <DrawerTitle>Modifica Appuntamento</DrawerTitle>
+              <DrawerDescription>Modifica i dettagli dell'appuntamento</DrawerDescription>
+            </DrawerHeader>
+            
+            <form id="edit-appointment-form" onSubmit={handleUpdate} className="px-4 pb-4 space-y-4">
             {selectedAppointment && (
               <div className="bg-muted p-4 rounded-lg space-y-2 text-sm">
                 <p><span className="font-semibold">Data:</span> {format(new Date(selectedAppointment.date), 'd MMMM yyyy', { locale: it })}</p>
@@ -597,36 +639,44 @@ export function AppointmentsList() {
               />
             </div>
 
-            <div className="flex flex-col sm:flex-row justify-between gap-4">
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={handleDelete}
-                disabled={loading}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                {loading ? 'Eliminazione...' : 'Elimina'}
-              </Button>
-              
-              <div className="flex gap-2 justify-end">
+            </form>
+            
+            <DrawerFooter className="px-4">
+              <div className="flex flex-col sm:flex-row justify-between gap-4 w-full">
                 <Button
                   type="button"
-                  variant="outline"
-                  onClick={() => setShowEditDialog(false)}
-                >
-                  Annulla
-                </Button>
-                <Button
-                  type="submit"
+                  variant="destructive"
+                  onClick={handleDelete}
                   disabled={loading}
+                  className="sm:order-1"
                 >
-                  {loading ? 'Aggiornamento...' : 'Aggiorna'}
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  {loading ? 'Eliminazione...' : 'Elimina'}
                 </Button>
+                
+                <div className="flex gap-2 justify-end sm:order-2">
+                  <DrawerClose asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                    >
+                      Annulla
+                    </Button>
+                  </DrawerClose>
+                  <Button
+                    type="submit"
+                    form="edit-appointment-form"
+                    disabled={loading}
+                  >
+                    {loading ? 'Aggiornamento...' : 'Aggiorna'}
+                  </Button>
+                </div>
               </div>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+            </DrawerFooter>
+          </div>
+        </DrawerContent>
+      </Drawer>
+      <ConfirmDialog />
     </div>
   )
 }

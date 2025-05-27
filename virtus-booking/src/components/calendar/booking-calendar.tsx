@@ -8,10 +8,21 @@ import interactionPlugin from '@fullcalendar/interaction'
 import { format } from 'date-fns'
 import { it } from 'date-fns/locale'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from '@/components/ui/drawer'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useSession } from 'next-auth/react'
+import { useConfirm } from '@/hooks/use-confirm'
+import { toast } from 'sonner'
 
 interface Booking {
   id: string
@@ -63,6 +74,7 @@ const translateStatus = (status: string): string => {
 
 export function BookingCalendar() {
   const { data: session } = useSession()
+  const { confirm, ConfirmDialog } = useConfirm()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [showBookingDialog, setShowBookingDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
@@ -105,7 +117,10 @@ export function BookingCalendar() {
         const data = await response.json()
         console.log('Fetched bookings:', data)
         
-        const formattedBookings = data.map((booking: any) => {
+        // Filter out cancelled appointments
+        const activeBookings = data.filter((booking: any) => booking.status !== 'CANCELLED')
+        
+        const formattedBookings = activeBookings.map((booking: any) => {
           // Map time slots to actual times
           const timeMap: Record<string, { start: string, end: string }> = {
             'MORNING': { start: '10:00', end: '12:00' },
@@ -168,7 +183,7 @@ export function BookingCalendar() {
         // For today, we'll check available slots later
       } else {
         // Don't allow booking for past dates
-        alert('Non è possibile prenotare appuntamenti nel passato')
+        toast.error('Non è possibile prenotare appuntamenti nel passato')
         return
       }
     }
@@ -289,12 +304,13 @@ export function BookingCalendar() {
           notes: ''
         })
         setSelectedSlot(null)
+        toast.success('Prenotazione creata con successo')
       } else {
-        alert(responseData.error || 'Creazione prenotazione fallita')
+        toast.error(responseData.error || 'Creazione prenotazione fallita')
       }
     } catch (error) {
       console.error('Error creating booking:', error)
-      alert('Creazione prenotazione fallita')
+      toast.error('Creazione prenotazione fallita')
     } finally {
       setLoading(false)
     }
@@ -355,13 +371,14 @@ export function BookingCalendar() {
         setShowEditDialog(false)
         fetchBookings() // Refresh calendar
         setSelectedBooking(null)
+        toast.success('Prenotazione aggiornata con successo')
       } else {
         const error = await response.json()
-        alert(error.error || 'Aggiornamento prenotazione fallito')
+        toast.error(error.error || 'Aggiornamento prenotazione fallito')
       }
     } catch (error) {
       console.error('Error updating booking:', error)
-      alert('Aggiornamento prenotazione fallito')
+      toast.error('Aggiornamento prenotazione fallito')
     } finally {
       setLoading(false)
     }
@@ -370,9 +387,15 @@ export function BookingCalendar() {
   const handleDelete = async () => {
     if (!selectedBooking) return
     
-    if (!confirm('Sei sicuro di voler eliminare questo appuntamento?')) {
-      return
-    }
+    const confirmed = await confirm({
+      title: 'Elimina Appuntamento',
+      description: 'Sei sicuro di voler eliminare questo appuntamento? Questa azione non può essere annullata.',
+      confirmText: 'Elimina',
+      cancelText: 'Annulla',
+      destructive: true
+    })
+    
+    if (!confirmed) return
     
     setLoading(true)
     
@@ -385,13 +408,14 @@ export function BookingCalendar() {
         setShowEditDialog(false)
         fetchBookings() // Refresh calendar
         setSelectedBooking(null)
+        toast.success('Appuntamento eliminato con successo')
       } else {
         const error = await response.json()
-        alert(error.error || 'Eliminazione prenotazione fallita')
+        toast.error(error.error || 'Eliminazione prenotazione fallita')
       }
     } catch (error) {
       console.error('Error deleting booking:', error)
-      alert('Eliminazione prenotazione fallita')
+      toast.error('Eliminazione prenotazione fallita')
     } finally {
       setLoading(false)
     }
@@ -446,18 +470,19 @@ export function BookingCalendar() {
         />
       </div>
 
-      <Dialog open={showBookingDialog} onOpenChange={setShowBookingDialog}>
-        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg md:max-w-2xl" aria-describedby="booking-dialog-description">
-          <DialogHeader>
-            <DialogTitle>
-              Crea Prenotazione per {selectedDate && format(selectedDate, 'd MMMM yyyy', { locale: it })}
-            </DialogTitle>
-            <div id="booking-dialog-description" className="sr-only">
-              Finestra per creare un nuovo appuntamento con informazioni del cliente e selezione del tecnico
-            </div>
-          </DialogHeader>
-          
-          <form onSubmit={handleSubmit} className="space-y-4">
+      <Drawer open={showBookingDialog} onOpenChange={setShowBookingDialog}>
+        <DrawerContent>
+          <div className="mx-auto w-full max-w-2xl">
+            <DrawerHeader>
+              <DrawerTitle>
+                Crea Prenotazione per {selectedDate && format(selectedDate, 'd MMMM yyyy', { locale: it })}
+              </DrawerTitle>
+              <DrawerDescription>
+                Inserisci i dettagli del cliente e seleziona il tecnico disponibile
+              </DrawerDescription>
+            </DrawerHeader>
+            
+            <form id="create-booking-form" onSubmit={handleSubmit} className="px-4 pb-4 space-y-4">
             {/* Available Slots */}
             <div>
               <Label>Fasce Orarie Disponibili</Label>
@@ -544,38 +569,45 @@ export function BookingCalendar() {
               />
             </div>
 
-            <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowBookingDialog(false)}
-              >
-                Annulla
-              </Button>
-              <Button
-                type="submit"
-                disabled={!selectedSlot || loading}
-              >
-                {loading ? 'Creazione...' : 'Crea Prenotazione'}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+            </form>
+            
+            <DrawerFooter className="px-4">
+              <div className="flex gap-2 justify-end w-full">
+                <DrawerClose asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                  >
+                    Annulla
+                  </Button>
+                </DrawerClose>
+                <Button
+                  type="submit"
+                  form="create-booking-form"
+                  disabled={!selectedSlot || loading}
+                >
+                  {loading ? 'Creazione...' : 'Crea Prenotazione'}
+                </Button>
+              </div>
+            </DrawerFooter>
+          </div>
+        </DrawerContent>
+      </Drawer>
 
-      {/* Edit/Delete Dialog */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg md:max-w-2xl" aria-describedby="edit-dialog-description">
-          <DialogHeader>
-            <DialogTitle>
-              Modifica Appuntamento
-            </DialogTitle>
-            <div id="edit-dialog-description" className="sr-only">
-              Finestra per modificare o eliminare un appuntamento esistente
-            </div>
-          </DialogHeader>
-          
-          <form onSubmit={handleUpdate} className="space-y-4">
+      {/* Edit/Delete Drawer */}
+      <Drawer open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DrawerContent>
+          <div className="mx-auto w-full max-w-2xl">
+            <DrawerHeader>
+              <DrawerTitle>
+                Modifica Appuntamento
+              </DrawerTitle>
+              <DrawerDescription>
+                Modifica o elimina l'appuntamento esistente
+              </DrawerDescription>
+            </DrawerHeader>
+            
+            <form id="edit-booking-form" onSubmit={handleUpdate} className="px-4 pb-4 space-y-4">
             {/* Appointment Details */}
             {selectedBooking && (
               <div className="bg-muted p-4 rounded-lg space-y-2">
@@ -656,35 +688,43 @@ export function BookingCalendar() {
               />
             </div>
 
-            <div className="flex flex-col sm:flex-row justify-between gap-4">
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={handleDelete}
-                disabled={loading}
-              >
-                {loading ? 'Eliminazione...' : 'Elimina Appuntamento'}
-              </Button>
-              
-              <div className="flex gap-2 justify-end">
+            </form>
+            
+            <DrawerFooter className="px-4">
+              <div className="flex flex-col sm:flex-row justify-between gap-4 w-full">
                 <Button
                   type="button"
-                  variant="outline"
-                  onClick={() => setShowEditDialog(false)}
-                >
-                  Annulla
-                </Button>
-                <Button
-                  type="submit"
+                  variant="destructive"
+                  onClick={handleDelete}
                   disabled={loading}
+                  className="sm:order-1"
                 >
-                  {loading ? 'Aggiornamento...' : 'Aggiorna Appuntamento'}
+                  {loading ? 'Eliminazione...' : 'Elimina Appuntamento'}
                 </Button>
+                
+                <div className="flex gap-2 justify-end sm:order-2">
+                  <DrawerClose asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                    >
+                      Annulla
+                    </Button>
+                  </DrawerClose>
+                  <Button
+                    type="submit"
+                    form="edit-booking-form"
+                    disabled={loading}
+                  >
+                    {loading ? 'Aggiornamento...' : 'Aggiorna Appuntamento'}
+                  </Button>
+                </div>
               </div>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+            </DrawerFooter>
+          </div>
+        </DrawerContent>
+      </Drawer>
+      <ConfirmDialog />
     </>
   )
 }
