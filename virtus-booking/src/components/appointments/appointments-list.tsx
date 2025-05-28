@@ -93,6 +93,7 @@ export function AppointmentsList() {
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [technicianFilter, setTechnicianFilter] = useState('ALL')
   const [technicians, setTechnicians] = useState<{id: string, name: string}[]>([])
+  const [excludeCancelled, setExcludeCancelled] = useState(true)
 
   const [formData, setFormData] = useState({
     customerName: '',
@@ -110,7 +111,7 @@ export function AppointmentsList() {
 
   useEffect(() => {
     filterAppointments()
-  }, [appointments, searchTerm, statusFilter, technicianFilter])
+  }, [appointments, searchTerm, statusFilter, technicianFilter, excludeCancelled])
 
   const fetchAppointments = async () => {
     try {
@@ -155,6 +156,11 @@ export function AppointmentsList() {
 
   const filterAppointments = () => {
     let filtered = [...appointments]
+
+    // Exclude cancelled filter
+    if (excludeCancelled) {
+      filtered = filtered.filter(apt => apt.status !== 'CANCELLED')
+    }
 
     // Search filter
     if (searchTerm) {
@@ -371,6 +377,7 @@ export function AppointmentsList() {
                 setSearchTerm('')
                 setStatusFilter('ALL')
                 setTechnicianFilter('ALL')
+                setExcludeCancelled(true)
               }}
               className="w-full"
             >
@@ -378,6 +385,19 @@ export function AppointmentsList() {
               Pulisci Filtri
             </Button>
           </div>
+        </div>
+        
+        <div className="mt-4 flex items-center">
+          <input
+            type="checkbox"
+            id="exclude-cancelled"
+            checked={excludeCancelled}
+            onChange={(e) => setExcludeCancelled(e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+          />
+          <Label htmlFor="exclude-cancelled" className="ml-2 cursor-pointer">
+            Escludi appuntamenti annullati
+          </Label>
         </div>
       </div>
 

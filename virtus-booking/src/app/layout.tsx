@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Toaster } from "sonner";
+import { ImpersonationBanner } from "@/components/impersonation-banner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,6 +18,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Virtus Booking System",
   description: "Water filtration technician booking management",
+  icons: {
+    icon: "/appointment.png",
+    shortcut: "/appointment.png",
+    apple: "/appointment.png",
+  },
 };
 
 export default function RootLayout({
@@ -30,6 +36,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Providers>
+          <ImpersonationBanner />
           {children}
           <Toaster 
             position="bottom-right"

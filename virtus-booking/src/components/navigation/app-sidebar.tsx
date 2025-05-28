@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Calendar, Home, Settings, User, List, Users, UserCog, ChevronUp, MessageCircle, BookOpen } from "lucide-react"
+import { Calendar, Home, Settings, User, List, Users, UserCog, ChevronUp, MessageCircle, BookOpen, Key } from "lucide-react"
 import { usePathname } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
 
@@ -54,11 +54,6 @@ const navigation = {
       icon: Settings,
       items: [
         {
-          title: "Il Mio Account",
-          href: "/account",
-          icon: User,
-        },
-        {
           title: "Gestione Utenti",
           href: "/users",
           icon: Users,
@@ -76,6 +71,12 @@ const navigation = {
           icon: BookOpen,
           adminOnly: true,
         },
+        {
+          title: "Token API",
+          href: "/api-tokens",
+          icon: Key,
+          adminOnly: true,
+        },
       ],
     },
   ],
@@ -84,7 +85,8 @@ const navigation = {
 export function AppSidebar() {
   const pathname = usePathname()
   const { data: session } = useSession()
-  const isAdmin = session?.user?.role === "ADMIN"
+  // When impersonating, use the impersonated user's role
+  const isAdmin = session?.user?.role === "ADMIN" && !session?.user?.isImpersonating
 
   return (
     <Sidebar>
@@ -125,20 +127,19 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Amministrazione</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navigation.settings.map((group) => (
-                <SidebarMenuItem key={group.title}>
-                  <SidebarMenuButton>
-                    <group.icon className="size-4" />
-                    <span>{group.title}</span>
-                  </SidebarMenuButton>
-                  <SidebarMenuSub>
-                    {group.items
-                      .filter(item => !item.adminOnly || isAdmin)
-                      .map((item) => (
+        {isAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Amministrazione</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {navigation.settings.map((group) => (
+                  <SidebarMenuItem key={group.title}>
+                    <SidebarMenuButton>
+                      <group.icon className="size-4" />
+                      <span>{group.title}</span>
+                    </SidebarMenuButton>
+                    <SidebarMenuSub>
+                      {group.items.map((item) => (
                         <SidebarMenuSubItem key={item.href}>
                           <SidebarMenuSubButton asChild isActive={pathname === item.href}>
                             <Link href={item.href}>
@@ -148,12 +149,13 @@ export function AppSidebar() {
                           </SidebarMenuSubButton>
                         </SidebarMenuSubItem>
                       ))}
-                  </SidebarMenuSub>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+                    </SidebarMenuSub>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter>

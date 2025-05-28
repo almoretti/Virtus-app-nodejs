@@ -4,11 +4,17 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { Role } from "@prisma/client"
 import { sendInvitationEmail } from "@/lib/email"
+import { getEffectiveUser } from "@/lib/auth-utils"
 
 export async function GET() {
   const session = await getServerSession(authOptions)
   
-  if (!session || session.user.role !== Role.ADMIN) {
+  if (!session) {
+    return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
+  }
+  
+  const effectiveUser = getEffectiveUser(session)
+  if (effectiveUser.role !== Role.ADMIN) {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
   }
 
@@ -37,7 +43,12 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   
-  if (!session || session.user.role !== Role.ADMIN) {
+  if (!session) {
+    return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
+  }
+  
+  const effectiveUser = getEffectiveUser(session)
+  if (effectiveUser.role !== Role.ADMIN) {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
   }
 
@@ -120,7 +131,12 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const session = await getServerSession(authOptions)
   
-  if (!session || session.user.role !== Role.ADMIN) {
+  if (!session) {
+    return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
+  }
+  
+  const effectiveUser = getEffectiveUser(session)
+  if (effectiveUser.role !== Role.ADMIN) {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
   }
 

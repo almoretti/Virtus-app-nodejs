@@ -14,6 +14,7 @@ const docsNavigation = [
     title: "API Reference",
     items: [
       { title: "Autenticazione", href: "/docs/api/auth" },
+      { title: "Token API", href: "/docs/api/tokens" },
       { title: "Prenotazioni", href: "/docs/api/bookings" },
       { title: "Disponibilità", href: "/docs/api/availability" },
       { title: "Utenti", href: "/docs/api/users" },

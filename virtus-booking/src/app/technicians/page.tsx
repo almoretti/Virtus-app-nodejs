@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { Role } from "@prisma/client"
+import { getEffectiveUser } from "@/lib/auth-utils"
 import DashboardClientLayout from '../dashboard-layout'
 
 export default async function TechniciansPage() {
@@ -12,7 +13,8 @@ export default async function TechniciansPage() {
     redirect("/auth/signin")
   }
 
-  if (session.user.role !== Role.ADMIN) {
+  const effectiveUser = getEffectiveUser(session)
+  if (effectiveUser.role !== Role.ADMIN) {
     redirect("/")
   }
 

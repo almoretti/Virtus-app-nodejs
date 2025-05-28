@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { Role } from "@prisma/client"
+import { getEffectiveUser } from "@/lib/auth-utils"
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -30,8 +31,9 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
+  const effectiveUser = getEffectiveUser(session)
   
-  if (!session || session.user.role !== Role.ADMIN) {
+  if (!effectiveUser || effectiveUser.role !== Role.ADMIN) {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
   }
 

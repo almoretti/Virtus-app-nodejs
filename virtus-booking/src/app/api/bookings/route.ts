@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { TimeSlot } from '@prisma/client'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { startOfDay, endOfDay } from 'date-fns'
+import { validateApiAuth, hasScope } from '@/lib/api-auth'
 
 const slotMapping: Record<string, TimeSlot> = {
   '10-12': TimeSlot.MORNING,
@@ -16,12 +15,20 @@ const slotMapping: Record<string, TimeSlot> = {
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const auth = await validateApiAuth(request)
     
-    if (!session?.user) {
+    if (!auth.success) {
       return NextResponse.json(
-        { error: 'Non autorizzato' },
+        { error: auth.error },
         { status: 401 }
+      )
+    }
+
+    // Check if user has read permission
+    if (!hasScope(auth.scopes, 'read')) {
+      return NextResponse.json(
+        { error: 'Permessi insufficienti - lettura richiesta' },
+        { status: 403 }
       )
     }
     
@@ -104,13 +111,21 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const auth = await validateApiAuth(request)
     
-    if (!session?.user) {
-      console.error('Unauthorized: No session found')
+    if (!auth.success) {
+      console.error('Unauthorized:', auth.error)
       return NextResponse.json(
-        { error: 'Non autorizzato' },
+        { error: auth.error },
         { status: 401 }
+      )
+    }
+
+    // Check if user has write permission
+    if (!hasScope(auth.scopes, 'write')) {
+      return NextResponse.json(
+        { error: 'Permessi insufficienti - scrittura richiesta' },
+        { status: 403 }
       )
     }
     
@@ -270,7 +285,7 @@ export async function POST(request: NextRequest) {
         customerId: customerRecord.id,
         technicianId,
         installationTypeId: installationTypeRecord.id,
-        createdById: session.user.id,
+        createdById: auth.user!.id,
         notes: body.notes || null,
       },
       include: {

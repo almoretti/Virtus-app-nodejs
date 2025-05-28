@@ -26,6 +26,7 @@ model User {
   technician    Technician?
   bookings      Booking[]  @relation("CreatedBy")
   invitations   UserInvitation[] @relation("InvitedBy")
+  apiTokens     ApiToken[] @relation("ApiTokens")
 }
 
 model Account {
@@ -169,4 +170,21 @@ model UserInvitation {
   
   @@index([token])
   @@index([email])
+}
+
+model ApiToken {
+  id            String    @id @default(cuid())
+  name          String    // User-friendly name for the token
+  token         String    @unique // The actual bearer token
+  userId        String
+  user          User      @relation("ApiTokens", fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt     DateTime? // Null means no expiration
+  lastUsedAt    DateTime?
+  isActive      Boolean   @default(true)
+  scopes        String?   // JSON array of allowed scopes/permissions
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  @@index([token])
+  @@index([userId])
 }

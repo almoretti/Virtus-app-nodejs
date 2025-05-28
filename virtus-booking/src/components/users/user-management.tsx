@@ -6,8 +6,9 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Role } from "@prisma/client"
-import { useSession } from "next-auth/react"
-import { Plus, Mail, Copy, X, Edit2, Trash2 } from "lucide-react"
+import { useSession, signIn } from "next-auth/react"
+import { Plus, Mail, Copy, X, Edit2, Trash2, UserCheck } from "lucide-react"
+import { useRouter } from "next/navigation"
 import {
   Drawer,
   DrawerClose,
@@ -45,6 +46,7 @@ interface Invitation {
 export function UserManagement() {
   const { data: session } = useSession()
   const { confirm, ConfirmDialog } = useConfirm()
+  const router = useRouter()
   const [users, setUsers] = useState<User[]>([])
   const [invitations, setInvitations] = useState<Invitation[]>([])
   const [loading, setLoading] = useState(true)
@@ -215,6 +217,36 @@ export function UserManagement() {
     }
   }
 
+  const handleImpersonate = async (userId: string) => {
+    const confirmed = await confirm(
+      "Impersona utente",
+      "Stai per impersonare questo utente. Potrai tornare al tuo account in qualsiasi momento."
+    )
+    
+    if (!confirmed) return
+
+    try {
+      const response = await fetch("/api/impersonate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        toast.success(`Stai impersonando ${data.targetUser.email}`)
+        // Force a hard refresh to reload the session
+        window.location.reload()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || "Errore durante l'impersonazione")
+      }
+    } catch (error) {
+      console.error("Error impersonating user:", error)
+      toast.error("Errore durante l'impersonazione")
+    }
+  }
+
   if (loading) {
     return <div>Caricamento...</div>
   }
@@ -283,14 +315,27 @@ export function UserManagement() {
                       <Edit2 className="h-4 w-4" />
                     </Button>
                     {user.id !== session?.user?.id && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleDeleteUser(user.id)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <>
+                        {session?.user?.role === Role.ADMIN && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleImpersonate(user.id)}
+                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            title="Impersona utente"
+                          >
+                            <UserCheck className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDeleteUser(user.id)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </>
                     )}
                   </div>
                 </div>

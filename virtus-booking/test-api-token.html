@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test API Token</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .error {
+            background: #ffcccc;
+        }
+        .success {
+            background: #ccffcc;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test API Token</h1>
+    
+    <div>
+        <label>API Token:</label>
+        <input type="text" id="token" value="vb_109dcf05c01b380c1d850345c84873d6e072eae5e2a8608bd35fd89b157e11a9" />
+    </div>
+
+    <div>
+        <h2>Test Endpoints:</h2>
+        <button onclick="testApi('/api/bookings', 'GET')">GET Bookings</button>
+        <button onclick="testApi('/api/availability?date=2025-01-30', 'GET')">GET Availability</button>
+        <button onclick="testApi('/api/technicians', 'GET')">GET Technicians</button>
+        <button onclick="testApi('/api/users', 'GET')">GET Users (Admin)</button>
+    </div>
+
+    <div id="result" class="result" style="display:none;"></div>
+
+    <script>
+        async function testApi(endpoint, method) {
+            const token = document.getElementById('token').value;
+            const resultDiv = document.getElementById('result');
+            
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            resultDiv.textContent = `Testing ${method} ${endpoint}...\n`;
+            
+            try {
+                const response = await fetch(endpoint, {
+                    method: method,
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `✅ Success (${response.status})\n\n${JSON.stringify(data, null, 2)}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ Error (${response.status})\n\n${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ Request failed:\n${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

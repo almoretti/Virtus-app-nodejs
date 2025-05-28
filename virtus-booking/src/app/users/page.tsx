@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { Role } from "@prisma/client"
 import DashboardClientLayout from '../dashboard-layout'
+import { getEffectiveUser } from "@/lib/auth-utils"
 
 export default async function UsersPage() {
   const session = await getServerSession(authOptions)
@@ -12,7 +13,8 @@ export default async function UsersPage() {
     redirect("/auth/signin")
   }
 
-  if (session.user.role !== Role.ADMIN) {
+  const effectiveUser = getEffectiveUser(session)
+  if (!effectiveUser || effectiveUser.role !== Role.ADMIN) {
     redirect("/")
   }
 
