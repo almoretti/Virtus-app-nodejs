@@ -14,6 +14,8 @@ This is a calendar-based booking management system for water filtration technici
 npm run dev          # Start development server on http://localhost:3000
 npm run build        # Build for production
 npm run start        # Start production server
+npm run mcp:server   # Run MCP server in standalone mode
+npm run mcp:test     # Test MCP server functionality
 ```
 
 ### Database
@@ -39,6 +41,9 @@ The booking system uses these core entities:
 - **Booking**: Core entity linking customer, technician, date/slot with status tracking
 - **TimeSlot**: Three daily slots (MORNING: 10-12, AFTERNOON: 13-15, EVENING: 16-18)
 - **UserInvitation**: Manages email invitations for new users with role pre-assignment
+- **ApiToken**: Bearer tokens for API authentication with scopes (read/write)
+- **Customer**: Customer information stored for bookings
+- **InstallationType**: Types of water filter installations
 
 ### API Design
 All APIs in `src/app/api/` follow RESTful patterns:
@@ -49,6 +54,9 @@ All APIs in `src/app/api/` follow RESTful patterns:
 - `/api/users/[id]` - Edit/delete specific users (self-edit allowed)
 - `/api/technicians` - Technician management
 - `/api/invitations` - Send user invitations (admin only)
+- `/api/tokens` - API token management (create, list, revoke)
+- `/api/impersonate` - Admin user impersonation
+- `/api/mcp` - Model Context Protocol server for LLM integration
 - APIs validate session and check user roles before processing
 
 ### Frontend Architecture
@@ -76,10 +84,12 @@ All APIs in `src/app/api/` follow RESTful patterns:
 - Calendario (/)
 - Appuntamenti (/appointments)  
 - Chat Assistenza (/chat)
+- Documentazione (/docs) - Admin only
 - Impostazioni (collapsible group)
   - Il Mio Account (/account)
   - Gestione Utenti (/users) - Admin only
   - Gestione Tecnici (/technicians) - Admin only
+  - Token API (/api-tokens) - Admin only
 ```
 
 ### Chat Assistant Feature
@@ -125,3 +135,67 @@ EMAIL_FROM="noreply@example.com"
 - **Notifications**: Use `toast` from Sonner for all user feedback
 - **Mobile Forms**: Use Drawer component for better mobile UX
 - **Loading States**: Show skeletons or spinners during async operations
+
+## Recent Features
+
+### API Token Authentication
+- Bearer token authentication for external API access
+- Token management UI at `/api-tokens` (admin only)
+- Scopes system: `read` for viewing data, `write` for modifications
+- Tokens can be created, named, and revoked
+- All API endpoints support both session and token authentication
+
+### User Impersonation
+- Admins can impersonate other users for debugging
+- Blue banner shows when impersonating
+- Maintains original user context for easy switching back
+- Access via user menu in user management page
+
+### Model Context Protocol (MCP) Server
+The app includes a Model Context Protocol server for LLM integration:
+
+#### MCP Endpoints
+- `/api/mcp` - Main MCP server endpoint (POST for messages, GET for SSE)
+- `/api/mcp/status` - Health check and capabilities info
+- Requires bearer token authentication
+
+#### MCP Tools Available
+1. **check_availability** - Check technician availability for dates
+2. **create_booking** - Create new appointments with customer details
+3. **modify_booking** - Modify existing bookings (date, time, technician)
+4. **cancel_booking** - Cancel appointments with optional reason
+5. **get_bookings** - List bookings with various filters
+
+#### MCP Integration
+- **n8n Integration**: Ready-made cURL examples in docs
+- **LLM Clients**: Compatible with Claude Desktop, OpenAI, etc.
+- **Real-time Updates**: SSE support for live availability changes
+- **Session Management**: Uses `sessionId` parameter for context
+
+#### MCP Configuration Files
+- `mcp-config.json` - General MCP configuration
+- `claude-desktop-config.json` - Claude Desktop integration
+- Full documentation at `/docs/api/mcp`
+
+### Documentation System
+- Comprehensive API documentation at `/docs`
+- Interactive examples with copy buttons
+- Separate pages for each API endpoint
+- MCP integration guide with n8n examples
+
+### UI Enhancements
+- Appointment filtering: Checkbox to exclude cancelled appointments
+- Sidebar navigation: Cleaned up for non-admin users
+- Mobile-responsive drawer forms
+- Improved error messages in Italian
+
+## Known Issues & Solutions
+
+### Windows/WSL Development
+- `.next/trace` file corruption can occur on Windows/WSL
+- Solution: Delete `.next` folder from Windows Explorer (not WSL)
+- Alternative: Create clean project directory and copy files
+
+### TypeScript Strict Mode
+- Some type assertions needed for MCP SDK compatibility
+- Use `@ts-ignore` sparingly for transport type mismatches

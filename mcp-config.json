@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "virtus-booking": {
+      "command": "npx",
+      "args": [
+        "tsx",
+        "./src/mcp/server-runner.ts"
+      ],
+      "cwd": ".",
+      "env": {
+        "DATABASE_URL": "file:./prisma/dev.db"
+      }
+    }
+  }
+}

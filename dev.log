@@ -1,0 +1,37 @@
+
+> virtus-booking@0.1.0 dev
+> next dev
+
+   ▲ Next.js 15.1.8
+   - Local:        http://localhost:3000
+   - Network:      http://10.255.255.254:3000
+   - Environments: .env
+
+ ✓ Starting...
+Attention: Next.js now collects completely anonymous telemetry regarding usage.
+This information is used to shape Next.js' roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://nextjs.org/telemetry
+
+ ✓ Ready in 8.6s
+ ○ Compiling / ...
+ ⨯ ./src/app/globals.css:1:1
+Syntax error: /mnt/c/Users/alemo/Desktop/AI Playground/Virtus-Bookingapp-nodejs/Virtus-app-nodejs/virtus-booking/src/app/globals.css The `border-border` class does not exist. If `border-border` is a custom class, make sure it is defined within a `@layer` directive.
+
+> 1 | @tailwind base;
+    | ^
+  2 | @tailwind components;
+  3 | @tailwind utilities;
+<w> [webpack.cache.PackFileCacheStrategy] Skipped not serializable cache item 'Compilation/modules|/mnt/c/Users/alemo/Desktop/AI Playground/Virtus-Bookingapp-nodejs/Virtus-app-nodejs/virtus-booking/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[13].oneOf[10].use[2]!/mnt/c/Users/alemo/Desktop/AI Playground/Virtus-Bookingapp-nodejs/Virtus-app-nodejs/virtus-booking/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[13].oneOf[10].use[3]!/mnt/c/Users/alemo/Desktop/AI Playground/Virtus-Bookingapp-nodejs/Virtus-app-nodejs/virtus-booking/src/app/globals.css': No serializer registered for PostCSSSyntaxError
+<w> while serializing webpack/lib/cache/PackFileCacheStrategy.PackContentItems -> webpack/lib/NormalModule -> webpack/lib/ModuleBuildError -> PostCSSSyntaxError
+ ⨯ ./src/app/globals.css:1:1
+Syntax error: /mnt/c/Users/alemo/Desktop/AI Playground/Virtus-Bookingapp-nodejs/Virtus-app-nodejs/virtus-booking/src/app/globals.css The `border-border` class does not exist. If `border-border` is a custom class, make sure it is defined within a `@layer` directive.
+
+> 1 | @tailwind base;
+    | ^
+  2 | @tailwind components;
+  3 | @tailwind utilities;
+ GET / 500 in 21487ms
+<w> [webpack.cache.PackFileCacheStrategy] Skipped not serializable cache item 'Compilation/modules|/mnt/c/Users/alemo/Desktop/AI Playground/Virtus-Bookingapp-nodejs/Virtus-app-nodejs/virtus-booking/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[13].oneOf[10].use[2]!/mnt/c/Users/alemo/Desktop/AI Playground/Virtus-Bookingapp-nodejs/Virtus-app-nodejs/virtus-booking/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[13].oneOf[10].use[3]!/mnt/c/Users/alemo/Desktop/AI Playground/Virtus-Bookingapp-nodejs/Virtus-app-nodejs/virtus-booking/src/app/globals.css': No serializer registered for PostCSSSyntaxError
+<w> while serializing webpack/lib/cache/PackFileCacheStrategy.PackContentItems -> webpack/lib/NormalModule -> webpack/lib/ModuleBuildError -> PostCSSSyntaxError
+[?25h

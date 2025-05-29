@@ -21,6 +21,12 @@ const docsNavigation = [
       { title: "Tecnici", href: "/docs/api/technicians" },
       { title: "Inviti", href: "/docs/api/invitations" }
     ]
+  },
+  {
+    title: "Integrazioni",
+    items: [
+      { title: "MCP Server", href: "/docs/api/mcp" }
+    ]
   }
 ]
 

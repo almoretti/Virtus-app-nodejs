@@ -1,0 +1,16 @@
+{
+  "globalShortcut": "CommandOrControl+;",
+  "mcpServers": {
+    "virtus-booking": {
+      "command": "npx",
+      "args": [
+        "tsx",
+        "./src/mcp/server-runner.ts"
+      ],
+      "cwd": "/mnt/c/Users/alemo/Desktop/AI Playground/Virtus-Bookingapp-nodejs/Virtus-app-nodejs/virtus-booking",
+      "env": {
+        "DATABASE_URL": "file:./prisma/dev.db"
+      }
+    }
+  }
+}

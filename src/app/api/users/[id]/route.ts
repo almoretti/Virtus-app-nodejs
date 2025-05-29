@@ -111,7 +111,6 @@ export async function DELETE(
       where: { id },
       include: {
         technician: true,
-        bookingsCreated: true,
       }
     })
     
@@ -122,8 +121,12 @@ export async function DELETE(
       )
     }
     
-    // If user has created bookings, we should soft delete or reassign
-    if (existingUser.bookingsCreated.length > 0) {
+    // Check if user has created any bookings
+    const bookingsCount = await prisma.booking.count({
+      where: { createdById: id }
+    })
+    
+    if (bookingsCount > 0) {
       return NextResponse.json(
         { error: 'Impossibile eliminare: l\'utente ha creato prenotazioni' },
         { status: 400 }
