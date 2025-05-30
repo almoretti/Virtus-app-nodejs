@@ -56,11 +56,11 @@ const getSecurityHeaders = () => {
     `
     : `
       default-src 'self';
-      script-src 'self' https://apis.google.com;
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com;
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
       font-src 'self' https://fonts.gstatic.com;
-      img-src 'self' data: https://cdn.jsdelivr.net blob:;
-      connect-src 'self' https://accounts.google.com https://apis.google.com;
+      img-src 'self' data: https://cdn.jsdelivr.net https: blob:;
+      connect-src 'self' https://accounts.google.com https://apis.google.com ws: wss:;
       frame-src 'self' https://accounts.google.com;
       object-src 'none';
       base-uri 'self';
