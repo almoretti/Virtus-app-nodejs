@@ -1,32 +1,14 @@
 [build]
 builder = "nixpacks"
-
-[deploy]
-healthcheckPath = "/health"
-healthcheckTimeout = 30
-restartPolicyType = "always"
-
-[[services]]
-name = "mcp-server"
-
-[services.build]
-builder = "nixpacks"
 buildCommand = "npm ci && npm run build"
 
-[services.deploy]
+[deploy]
 startCommand = "npm start"
 healthcheckPath = "/health"
 healthcheckTimeout = 30
 restartPolicyType = "always"
 
-[[services.variables]]
-name = "NODE_ENV"
-value = "production"
-
-[[services.variables]]
-name = "PORT"
-value = "3001"
-
-[[services.variables]]
-name = "HOST"  
-value = "0.0.0.0"
+[env]
+NODE_ENV = "production"
+PORT = "3001"
+HOST = "0.0.0.0"
