@@ -43,121 +43,130 @@ async function createMCPServer(sessionId: string, auth: any) {
       }
     );
 
-    // Add initialize handler (required by MCP protocol)
-    server.setRequestHandler('initialize', async (request) => {
-      return {
-        protocolVersion: "2024-11-05",
-        capabilities: {
-          tools: {}
-        },
-        serverInfo: {
-          name: "Virtus Booking MCP Server",
-          version: "1.0.0"
-        }
-      };
-    });
-
-    // Add tools list handler
-    server.setRequestHandler('tools/list', async (request) => {
-      return {
-        tools: [
-          {
-            name: "check_availability",
-            description: "Controlla la disponibilità dei tecnici per una data specifica",
-            inputSchema: {
-              type: "object",
-              properties: {
-                date: { type: "string", description: "Data in formato YYYY-MM-DD" },
-                technicianId: { type: "string", description: "ID specifico del tecnico (opzionale)" }
-              },
-              required: ["date"]
-            }
-          },
-          {
-            name: "create_booking", 
-            description: "Crea una nuova prenotazione",
-            inputSchema: {
-              type: "object",
-              properties: {
-                date: { type: "string" },
-                slot: { type: "string", enum: ["MORNING", "AFTERNOON", "EVENING"] },
-                technicianId: { type: "string" },
-                customer: {
-                  type: "object",
-                  properties: {
-                    name: { type: "string" },
-                    phone: { type: "string" },
-                    email: { type: "string" },
-                    address: { type: "string" }
-                  },
-                  required: ["name", "phone", "address"]
+    // Tool: Check availability
+    server.setRequestHandler(
+      { method: "tools/list" },
+      async () => {
+        return {
+          tools: [
+            {
+              name: "check_availability",
+              description: "Controlla la disponibilità dei tecnici per una data specifica",
+              inputSchema: {
+                type: "object",
+                properties: {
+                  date: { type: "string", description: "Data in formato YYYY-MM-DD" },
+                  technicianId: { type: "string", description: "ID specifico del tecnico (opzionale)" }
                 },
-                installationType: { type: "string" },
-                notes: { type: "string" }
-              },
-              required: ["date", "slot", "technicianId", "customer", "installationType"]
-            }
-          },
-          {
-            name: "modify_booking",
-            description: "Modifica una prenotazione esistente", 
-            inputSchema: {
-              type: "object",
-              properties: {
-                bookingId: { type: "string" },
-                date: { type: "string" },
-                slot: { type: "string", enum: ["MORNING", "AFTERNOON", "EVENING"] },
-                technicianId: { type: "string" },
-                notes: { type: "string" }
-              },
-              required: ["bookingId"]
-            }
-          },
-          {
-            name: "cancel_booking",
-            description: "Cancella una prenotazione",
-            inputSchema: {
-              type: "object", 
-              properties: {
-                bookingId: { type: "string" },
-                reason: { type: "string" }
-              },
-              required: ["bookingId"]
-            }
-          },
-          {
-            name: "get_bookings",
-            description: "Recupera le prenotazioni con filtri opzionali",
-            inputSchema: {
-              type: "object",
-              properties: {
-                date: { type: "string" },
-                from: { type: "string" },
-                to: { type: "string" },
-                status: { type: "string", enum: ["SCHEDULED", "COMPLETED", "CANCELLED"] },
-                technicianId: { type: "string" }
+                required: ["date"]
+              }
+            },
+            {
+              name: "create_booking", 
+              description: "Crea una nuova prenotazione",
+              inputSchema: {
+                type: "object",
+                properties: {
+                  date: { type: "string" },
+                  slot: { type: "string", enum: ["MORNING", "AFTERNOON", "EVENING"] },
+                  technicianId: { type: "string" },
+                  customer: {
+                    type: "object",
+                    properties: {
+                      name: { type: "string" },
+                      phone: { type: "string" },
+                      email: { type: "string" },
+                      address: { type: "string" }
+                    },
+                    required: ["name", "phone", "address"]
+                  },
+                  installationType: { type: "string" },
+                  notes: { type: "string" }
+                },
+                required: ["date", "slot", "technicianId", "customer", "installationType"]
+              }
+            },
+            {
+              name: "modify_booking",
+              description: "Modifica una prenotazione esistente", 
+              inputSchema: {
+                type: "object",
+                properties: {
+                  bookingId: { type: "string" },
+                  date: { type: "string" },
+                  slot: { type: "string", enum: ["MORNING", "AFTERNOON", "EVENING"] },
+                  technicianId: { type: "string" },
+                  notes: { type: "string" }
+                },
+                required: ["bookingId"]
+              }
+            },
+            {
+              name: "cancel_booking",
+              description: "Cancella una prenotazione",
+              inputSchema: {
+                type: "object", 
+                properties: {
+                  bookingId: { type: "string" },
+                  reason: { type: "string" }
+                },
+                required: ["bookingId"]
+              }
+            },
+            {
+              name: "get_bookings",
+              description: "Recupera le prenotazioni con filtri opzionali",
+              inputSchema: {
+                type: "object",
+                properties: {
+                  date: { type: "string" },
+                  from: { type: "string" },
+                  to: { type: "string" },
+                  status: { type: "string", enum: ["SCHEDULED", "COMPLETED", "CANCELLED"] },
+                  technicianId: { type: "string" }
+                }
               }
             }
+          ]
+        };
+      }
+    );
+
+    // Add initialize handler (required by MCP protocol)
+    server.setRequestHandler(
+      { method: "initialize" },
+      async () => {
+        return {
+          protocolVersion: "2024-11-05",
+          capabilities: {
+            tools: {}
+          },
+          serverInfo: {
+            name: "Virtus Booking MCP Server",
+            version: "1.0.0"
           }
-        ]
-      };
-    });
+        };
+      }
+    );
 
     // Add tool call handler
-    server.setRequestHandler('tools/call', async (request) => {
-      try {
-        // Set auth context for this session
-        setSessionContext(sessionId, {
-          user: auth.user!,
-          scopes: auth.scopes || []
-        });
-        
-        const result = await handleToolCall(request.params, auth);
-        return result;
-      } catch (error) {
-        throw new Error(error instanceof Error ? error.message : "Tool execution failed");
+    server.setRequestHandler(
+      { method: "tools/call" },
+      async (request) => {
+        try {
+          // Set auth context for this session
+          setSessionContext(sessionId, {
+            user: auth.user!,
+            scopes: auth.scopes || []
+          });
+          
+          const result = await handleToolCall(request.params, auth);
+          return result;
+        } catch (error) {
+          throw new Error(error instanceof Error ? error.message : "Tool execution failed");
+        }
       }
-    });
+    );
 
     console.log('MCP Server created successfully');
     return { server, SSEServerTransport };
