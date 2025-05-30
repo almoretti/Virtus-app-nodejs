@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { server } from '@/mcp/booking-server';
+import { server } from '@/mcp/lazy-server';
 import { SSEServerTransport } from '@/mcp/sse-transport';
 import { JSONRPCMessage, JSONRPCRequest } from '@modelcontextprotocol/sdk/types.js';
 import { validateApiAuth } from '@/lib/api-auth';
