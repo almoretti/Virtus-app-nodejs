@@ -1,20 +1,8 @@
 import { prisma } from './db.js';
+import { TimeSlot, BookingStatus } from '@prisma/client';
 import { startOfDay, endOfDay, format, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { z } from 'zod';
-
-// Define enums manually since Prisma might not export them properly
-enum TimeSlot {
-  MORNING = 'MORNING',
-  AFTERNOON = 'AFTERNOON', 
-  EVENING = 'EVENING'
-}
-
-enum BookingStatus {
-  SCHEDULED = 'SCHEDULED',
-  COMPLETED = 'COMPLETED',
-  CANCELLED = 'CANCELLED'
-}
 
 // Validation schemas
 const CustomerSchema = z.object({
