@@ -41,6 +41,18 @@ export const authOptions: NextAuthOptions = {
     signIn: '/auth/signin',
     error: '/auth/error',
   },
+  events: {
+    async createUser({ user }) {
+      // Auto-assign ADMIN role to specific emails
+      const adminEmails = ['alessandro@moretti.cc', 'admin@virtus.com'];
+      if (user.email && adminEmails.includes(user.email)) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { role: 'ADMIN' }
+        });
+      }
+    }
+  },
   callbacks: {
     async signIn({ user, account, profile }) {
       if (account?.provider === "google") {
