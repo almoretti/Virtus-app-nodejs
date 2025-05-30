@@ -8,9 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "db:push": "prisma db push",
-    "db:seed": "npx prisma db seed",
-    "mcp:server": "tsx src/mcp/server-runner.ts",
-    "mcp:test": "tsx src/mcp/test-client.ts"
+    "db:seed": "npx prisma db seed"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
@@ -23,7 +21,6 @@
     "@fullcalendar/react": "^6.1.17",
     "@fullcalendar/timegrid": "^6.1.17",
     "@getbrevo/brevo": "^2.2.0",
-    "@modelcontextprotocol/sdk": "^1.12.0",
     "@prisma/client": "^6.8.2",
     "@radix-ui/react-alert-dialog": "^1.1.14",
     "@radix-ui/react-avatar": "^1.1.10",
