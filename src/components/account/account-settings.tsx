@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
 import { User } from "lucide-react"
+import * as api from '@/lib/api-client'
 
 export function AccountSettings() {
   const { data: session, update } = useSession()
@@ -31,13 +32,8 @@ export function AccountSettings() {
     setLoading(true)
 
     try {
-      const response = await fetch(`/api/users/${session?.user?.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: formData.name,
+      const response = await api.put(`/api/users/${session?.user?.id}`, {
+        name: formData.name,
           email: formData.email,
           role: session?.user?.role, // Keep the same role
         }),

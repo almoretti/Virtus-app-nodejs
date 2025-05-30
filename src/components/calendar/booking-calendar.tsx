@@ -24,6 +24,7 @@ import { useSession } from 'next-auth/react'
 import { useConfirm } from '@/hooks/use-confirm'
 import { toast } from 'sonner'
 import { fetchWithCSRF } from '@/hooks/use-csrf'
+import * as api from '@/lib/api-client'
 
 interface Booking {
   id: string
@@ -189,7 +190,7 @@ export function BookingCalendar() {
     
     // Fetch availability for selected date
     try {
-      const response = await fetch(`/api/availability?date=${format(clickedDate, 'yyyy-MM-dd')}`)
+      const response = await api.get(`/api/availability?date=${format(clickedDate, 'yyyy-MM-dd')}`)
       if (response.ok) {
         const data = await response.json()
         
@@ -360,13 +361,7 @@ export function BookingCalendar() {
     // console.log('Updating booking:', selectedBooking.id, updateData)
     
     try {
-      const response = await fetch(`/api/bookings/${selectedBooking.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updateData),
-      })
+      const response = await api.put(`/api/bookings/${selectedBooking.id}`, updateData)
 
       if (response.ok) {
         setShowEditDialog(false)
@@ -401,9 +396,7 @@ export function BookingCalendar() {
     setLoading(true)
     
     try {
-      const response = await fetch(`/api/bookings/${selectedBooking.id}`, {
-        method: 'DELETE',
-      })
+      const response = await api.delete(`/api/bookings/${selectedBooking.id}`)
 
       if (response.ok) {
         setShowEditDialog(false)

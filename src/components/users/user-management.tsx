@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/drawer"
 import { useConfirm } from '@/hooks/use-confirm'
 import { toast } from 'sonner'
+import * as api from '@/lib/api-client'
 
 interface User {
   id: string
@@ -77,7 +78,7 @@ export function UserManagement() {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch("/api/users")
+      const response = await api.get("/api/users")
       if (response.ok) {
         const data = await response.json()
         setUsers(data)
@@ -91,7 +92,7 @@ export function UserManagement() {
 
   const fetchInvitations = async () => {
     try {
-      const response = await fetch("/api/invitations")
+      const response = await api.get("/api/invitations")
       if (response.ok) {
         const data = await response.json()
         setInvitations(data.filter((inv: Invitation) => !inv.acceptedAt))
@@ -103,13 +104,7 @@ export function UserManagement() {
 
   const updateUserRole = async (userId: string, role: Role) => {
     try {
-      const response = await fetch("/api/users", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ userId, role }),
-      })
+      const response = await api.patch("/api/users", { userId, role })
 
       if (response.ok) {
         fetchUsers()
@@ -121,13 +116,7 @@ export function UserManagement() {
 
   const sendInvitation = async () => {
     try {
-      const response = await fetch("/api/invitations", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(inviteForm),
-      })
+      const response = await api.post("/api/invitations", inviteForm)
 
       if (response.ok) {
         const data = await response.json()
@@ -147,9 +136,7 @@ export function UserManagement() {
 
   const deleteInvitation = async (invitationId: string) => {
     try {
-      const response = await fetch(`/api/invitations?id=${invitationId}`, {
-        method: "DELETE",
-      })
+      const response = await api.delete(`/api/invitations?id=${invitationId}`)
 
       if (response.ok) {
         fetchInvitations()
@@ -173,13 +160,7 @@ export function UserManagement() {
     if (!selectedUser) return
 
     try {
-      const response = await fetch(`/api/users/${selectedUser.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(editForm),
-      })
+      const response = await api.put(`/api/users/${selectedUser.id}`, editForm)
 
       if (response.ok) {
         setShowEditDrawer(false)
@@ -207,9 +188,7 @@ export function UserManagement() {
     if (!confirmed) return
 
     try {
-      const response = await fetch(`/api/users/${userId}`, {
-        method: "DELETE",
-      })
+      const response = await api.delete(`/api/users/${userId}`)
 
       if (response.ok) {
         fetchUsers()
@@ -233,11 +212,7 @@ export function UserManagement() {
     if (!confirmed) return
 
     try {
-      const response = await fetch("/api/impersonate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId })
-      })
+      const response = await api.post("/api/impersonate", { userId })
 
       if (response.ok) {
         const data = await response.json()

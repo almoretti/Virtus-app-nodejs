@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Role } from "@prisma/client"
 import { useSession } from "next-auth/react"
 import { Plus, Edit2, Save, X } from "lucide-react"
+import * as api from '@/lib/api-client'
 
 interface Technician {
   id: string
@@ -46,8 +47,8 @@ export function TechnicianManagement() {
   const fetchData = async () => {
     try {
       const [techResponse, usersResponse] = await Promise.all([
-        fetch("/api/technicians"),
-        fetch("/api/users"),
+        api.get("/api/technicians"),
+        api.get("/api/users"),
       ])
 
       if (techResponse.ok && usersResponse.ok) {
@@ -84,16 +85,10 @@ export function TechnicianManagement() {
 
   const saveTechnician = async (technicianId: string) => {
     try {
-      const response = await fetch("/api/technicians", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          technicianId,
-          name: editName,
-          color: editColor,
-        }),
+      const response = await api.patch("/api/technicians", {
+        technicianId,
+        name: editName,
+        color: editColor,
       })
 
       if (response.ok) {
@@ -109,15 +104,9 @@ export function TechnicianManagement() {
     if (!selectedUserId) return
 
     try {
-      const response = await fetch("/api/technicians", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId: selectedUserId,
-          color: newColor,
-        }),
+      const response = await api.post("/api/technicians", {
+        userId: selectedUserId,
+        color: newColor,
       })
 
       if (response.ok) {
@@ -133,15 +122,9 @@ export function TechnicianManagement() {
 
   const toggleActive = async (technicianId: string, active: boolean) => {
     try {
-      const response = await fetch("/api/technicians", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          technicianId,
-          active: !active,
-        }),
+      const response = await api.patch("/api/technicians", {
+        technicianId,
+        active: !active,
       })
 
       if (response.ok) {

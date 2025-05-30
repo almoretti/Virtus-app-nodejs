@@ -20,6 +20,7 @@ import {
 import { Calendar, Clock, User, MapPin, Phone, Mail, FileText, Edit2, Trash2, Filter, Search, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
 import { useConfirm } from '@/hooks/use-confirm'
 import { toast } from 'sonner'
+import * as api from '@/lib/api-client'
 
 interface Booking {
   id: string
@@ -115,7 +116,7 @@ export function AppointmentsList() {
 
   const fetchAppointments = async () => {
     try {
-      const response = await fetch('/api/bookings')
+      const response = await api.get('/api/bookings')
       if (response.ok) {
         const data = await response.json()
         // Map the data to match our interface
@@ -141,7 +142,7 @@ export function AppointmentsList() {
 
   const fetchTechnicians = async () => {
     try {
-      const response = await fetch('/api/technicians')
+      const response = await api.get('/api/technicians')
       if (response.ok) {
         const data = await response.json()
         setTechnicians(data.map((tech: any) => ({
@@ -209,13 +210,9 @@ export function AppointmentsList() {
 
     setLoading(true)
     try {
-      const response = await fetch(`/api/bookings`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: selectedAppointment.id,
-          ...formData
-        })
+      const response = await api.put(`/api/bookings`, {
+        id: selectedAppointment.id,
+        ...formData
       })
 
       if (response.ok) {
@@ -249,11 +246,7 @@ export function AppointmentsList() {
 
     setLoading(true)
     try {
-      const response = await fetch(`/api/bookings`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: selectedAppointment.id })
-      })
+      const response = await api.delete(`/api/bookings?id=${selectedAppointment.id}`)
 
       if (response.ok) {
         await fetchAppointments()
@@ -288,11 +281,7 @@ export function AppointmentsList() {
 
     setLoading(true)
     try {
-      const response = await fetch(`/api/bookings/${appointmentId}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus })
-      })
+      const response = await api.patch(`/api/bookings/${appointmentId}/status`, { status: newStatus })
 
       if (response.ok) {
         await fetchAppointments()
