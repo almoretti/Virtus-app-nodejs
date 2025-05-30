@@ -269,9 +269,18 @@ export async function OPTIONS() {
 // GET: Establish SSE connection (MCP protocol compliant)
 export async function GET(request: NextRequest) {
   try {
+    // Debug: Log received headers
+    console.log('SSE Request Headers:', {
+      authorization: request.headers.get('authorization'),
+      accept: request.headers.get('accept'),
+      'user-agent': request.headers.get('user-agent'),
+      allHeaders: Object.fromEntries(request.headers.entries())
+    });
+
     // Validate authentication
     const auth = await validateApiAuth(request);
     if (!auth.success) {
+      console.log('SSE Authentication failed:', auth.error);
       return NextResponse.json(
         { error: auth.error },
         { status: 401, headers: corsHeaders }
