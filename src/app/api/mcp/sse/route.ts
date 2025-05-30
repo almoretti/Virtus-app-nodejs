@@ -43,8 +43,22 @@ async function createMCPServer(sessionId: string, auth: any) {
       }
     );
 
-    // Add tools
-    server.setRequestHandler('tools/list', async () => {
+    // Add initialize handler (required by MCP protocol)
+    server.setRequestHandler('initialize', async (request) => {
+      return {
+        protocolVersion: "2024-11-05",
+        capabilities: {
+          tools: {}
+        },
+        serverInfo: {
+          name: "Virtus Booking MCP Server",
+          version: "1.0.0"
+        }
+      };
+    });
+
+    // Add tools list handler
+    server.setRequestHandler('tools/list', async (request) => {
       return {
         tools: [
           {

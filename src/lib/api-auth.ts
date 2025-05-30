@@ -27,7 +27,12 @@ export async function validateApiAuth(request: NextRequest): Promise<AuthResult>
     
     // Check for Bearer token first
     if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.substring(7) // Remove "Bearer " prefix
+      let token = authHeader.substring(7) // Remove "Bearer " prefix
+      
+      // Handle double "Bearer" prefix (common client mistake)
+      if (token.startsWith('Bearer ')) {
+        token = token.substring(7) // Remove second "Bearer " prefix
+      }
       
       // Hash the incoming token to compare with stored hash
       const hashedToken = createHash('sha256').update(token).digest('hex')
