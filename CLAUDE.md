@@ -14,8 +14,15 @@ This is a calendar-based booking management system for water filtration technici
 npm run dev          # Start development server on http://localhost:3000
 npm run build        # Build for production
 npm run start        # Start production server
-npm run mcp:server   # Run MCP server in standalone mode
-npm run mcp:test     # Test MCP server functionality
+```
+
+### MCP Server (Standalone Service)
+```bash
+cd mcp-server        # Navigate to MCP server directory
+npm run dev          # Start MCP server in development
+npm run build        # Build MCP server TypeScript
+npm start            # Start MCP server in production
+npm run db:generate  # Generate Prisma client for MCP server
 ```
 
 ### Database
@@ -158,14 +165,19 @@ NEXT_PUBLIC_N8N_WEBHOOK_URL="https://n8n.moretti.cc/webhook/..."
 - Access via user menu in user management page
 
 ### Model Context Protocol (MCP) Server
-The app includes a Model Context Protocol server for LLM integration:
+**IMPORTANT: MCP server is now deployed as a standalone Express service on Railway, separate from the Next.js app.**
 
-#### MCP Endpoints
-- `/api/mcp/sse` - Standard MCP SSE transport endpoint (GET for SSE, POST for JSON-RPC)
-- `/api/mcp/v1` - Simple JSON-RPC endpoint for direct tool calls
-- `/api/mcp/test` - Health check and authentication test
-- `/api/mcp/status` - Server capabilities info
-- All endpoints require bearer token authentication
+#### Architecture
+- **Standalone Express Server**: Located in `/mcp-server/` directory
+- **Separate Railway Service**: Independent deployment with dedicated URL
+- **Shared Database**: Uses same PostgreSQL database as main app via `DATABASE_URL`
+- **Official MCP SDK**: Uses `@modelcontextprotocol/sdk` with proper SSE transport
+
+#### MCP Server Endpoints
+- `GET /health` - Health check endpoint
+- `GET /mcp/info` - Server capabilities and available tools
+- `GET /mcp/sse` - Standard MCP SSE transport endpoint (requires Bearer token)
+- `POST /mcp/sse` - HTTP JSON-RPC fallback endpoint (requires Bearer token)
 
 #### MCP Tools Available
 1. **check_availability** - Check technician availability for dates
@@ -174,18 +186,19 @@ The app includes a Model Context Protocol server for LLM integration:
 4. **cancel_booking** - Cancel appointments with optional reason
 5. **get_bookings** - List bookings with various filters
 
-#### MCP Integration
-- **n8n Integration**: Standard MCP client support via SSE transport at `/api/mcp/sse`
-- **LLM Clients**: Compatible with Claude Desktop, OpenAI, and any standard MCP client
-- **Real-time Updates**: SSE support for live availability changes
-- **Session Management**: Uses `sessionId` parameter for context persistence
-- **Authentication**: Bearer token in Authorization header
-- **Transport**: SSE (Server-Sent Events) for remote connections
+#### Authentication & Integration
+- **Bearer Token Authentication**: Uses same API tokens from main app database
+- **n8n Integration**: Standard MCP SSE client support
+- **Claude Desktop**: Compatible via SSE transport
+- **Session Management**: Maintains user context across tool calls
+- **Full Node.js Runtime**: No edge function limitations
 
-#### MCP Configuration Files
-- `mcp-config.json` - General MCP configuration
-- `claude-desktop-config.json` - Claude Desktop integration
-- Full documentation at `/docs/api/mcp`
+#### Deployment Notes
+- **Railway Services**: Two separate services in same project
+  - `Virtus-app-nodejs`: Main Next.js booking application
+  - `mcp-server`: Standalone MCP server (Express + TypeScript)
+- **Environment Variables**: Requires same `DATABASE_URL` as main app
+- **Schema Sync**: `/mcp-server/prisma/schema.prisma` must match main schema
 
 ### Documentation System
 - Comprehensive API documentation at `/docs`
@@ -253,3 +266,9 @@ The app includes a Model Context Protocol server for LLM integration:
 - Use `NPM_CONFIG_LEGACY_PEER_DEPS=true` for NextAuth compatibility
 - Ensure DATABASE_URL uses public endpoint for migrations
 - Check Railway logs for build errors
+
+### MCP Server Deployment
+- **Schema Synchronization**: When updating Prisma schema, copy changes to `/mcp-server/prisma/schema.prisma`
+- **Environment Variables**: MCP server requires same `DATABASE_URL` as main app
+- **Docker Symlinks**: Symlinks don't work in Railway builds - use file copies instead
+- **Prisma Generation**: MCP server runs `prisma generate` during build via `postinstall` script
