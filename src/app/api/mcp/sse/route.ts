@@ -1,251 +1,152 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateApiAuth } from '@/lib/api-auth';
 import { setSessionContext, removeSessionContext } from '@/mcp/mcp-context';
-
-// Import tool handlers directly instead of relying on the MCP server
+import { SSEServerTransport } from '@/mcp/sse-transport';
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { handleToolCall } from '@/mcp/tool-handlers';
 
-// Simple SSE implementation without the complex MCP server
-class SimpleSSETransport {
-  private sessions = new Map<string, any>();
-
-  createSSEConnection(sessionId: string): Response {
-    // Clean up existing session if any
-    if (this.sessions.has(sessionId)) {
-      this.closeSession(sessionId);
-    }
-
-    const stream = new ReadableStream({
-      start: (controller) => {
-        const session = {
-          id: sessionId,
-          controller,
-          lastActivity: new Date(),
-        };
-
-        this.sessions.set(sessionId, session);
-
-        // Send initial connection message
-        this.sendToSession(sessionId, {
-          type: 'connection-established',
-          sessionId,
-          timestamp: new Date().toISOString(),
-          capabilities: {
-            tools: ['check_availability', 'create_booking', 'modify_booking', 'cancel_booking', 'get_bookings']
-          }
-        });
-
-        // Keep-alive ping every 30 seconds
-        const keepAlive = setInterval(() => {
-          if (this.sessions.has(sessionId)) {
-            this.sendToSession(sessionId, { type: 'ping' });
-          } else {
-            clearInterval(keepAlive);
-          }
-        }, 30000);
+// Create MCP server instance with proper tool definitions
+function createMCPServer() {
+  const server = new Server(
+    {
+      name: 'virtus-booking-server',
+      version: '1.0.0',
+    },
+    {
+      capabilities: {
+        tools: {},
       },
-      cancel: () => {
-        this.closeSession(sessionId);
-      }
-    });
-
-    return new Response(stream, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      },
-    });
-  }
-
-  private closeSession(sessionId: string) {
-    const session = this.sessions.get(sessionId);
-    if (session) {
-      try {
-        session.controller.close();
-      } catch (error) {
-        // Ignore close errors
-      }
-      this.sessions.delete(sessionId);
-      // Clean up session context
-      removeSessionContext(sessionId);
     }
-  }
+  );
 
-  private sendToSession(sessionId: string, data: any): boolean {
-    const session = this.sessions.get(sessionId);
-    if (!session) {
-      return false;
-    }
-
-    try {
-      const message = `data: ${JSON.stringify(data)}\n\n`;
-      session.controller.enqueue(new TextEncoder().encode(message));
-      session.lastActivity = new Date();
-      return true;
-    } catch (error) {
-      this.closeSession(sessionId);
-      return false;
-    }
-  }
-
-  async handleMessage(sessionId: string, message: any, auth: any) {
-    const session = this.sessions.get(sessionId);
-    if (!session) {
-      throw new Error(`Session ${sessionId} not found`);
-    }
-
-    session.lastActivity = new Date();
-
-    // Handle different MCP methods
-    if (message.method === 'initialize') {
-      return {
-        jsonrpc: "2.0",
-        id: message.id,
-        result: {
-          protocolVersion: "1.0",
-          serverInfo: {
-            name: "Virtus Booking MCP Server",
-            version: "1.0.0"
-          },
-          capabilities: {
-            tools: {}
-          }
-        }
-      };
-    }
-
-    if (message.method === 'tools/list') {
-      return {
-        jsonrpc: "2.0",
-        id: message.id,
-        result: {
-          tools: [
-            {
-              name: "check_availability",
-              description: "Controlla la disponibilità dei tecnici per una data specifica",
-              inputSchema: {
-                type: "object",
-                properties: {
-                  date: { type: "string", description: "Data in formato YYYY-MM-DD" },
-                  technicianId: { type: "string", description: "ID specifico del tecnico (opzionale)" }
-                },
-                required: ["date"]
-              }
-            },
-            {
-              name: "create_booking",
-              description: "Crea una nuova prenotazione",
-              inputSchema: {
-                type: "object",
-                properties: {
-                  date: { type: "string" },
-                  slot: { type: "string", enum: ["MORNING", "AFTERNOON", "EVENING"] },
-                  technicianId: { type: "string" },
-                  customer: {
-                    type: "object",
-                    properties: {
-                      name: { type: "string" },
-                      phone: { type: "string" },
-                      email: { type: "string" },
-                      address: { type: "string" }
-                    },
-                    required: ["name", "phone", "address"]
-                  },
-                  installationType: { type: "string" },
-                  notes: { type: "string" }
-                },
-                required: ["date", "slot", "technicianId", "customer", "installationType"]
-              }
-            },
-            {
-              name: "modify_booking",
-              description: "Modifica una prenotazione esistente",
-              inputSchema: {
-                type: "object",
-                properties: {
-                  bookingId: { type: "string" },
-                  date: { type: "string" },
-                  slot: { type: "string", enum: ["MORNING", "AFTERNOON", "EVENING"] },
-                  technicianId: { type: "string" },
-                  notes: { type: "string" }
-                },
-                required: ["bookingId"]
-              }
-            },
-            {
-              name: "cancel_booking",
-              description: "Cancella una prenotazione",
-              inputSchema: {
-                type: "object",
-                properties: {
-                  bookingId: { type: "string" },
-                  reason: { type: "string" }
-                },
-                required: ["bookingId"]
-              }
-            },
-            {
-              name: "get_bookings",
-              description: "Recupera le prenotazioni con filtri opzionali",
-              inputSchema: {
-                type: "object",
-                properties: {
-                  date: { type: "string" },
-                  from: { type: "string" },
-                  to: { type: "string" },
-                  status: { type: "string", enum: ["SCHEDULED", "COMPLETED", "CANCELLED"] },
-                  technicianId: { type: "string" }
-                }
-              }
-            }
-          ]
-        }
-      };
-    }
-
-    if (message.method === 'tools/call') {
-      try {
-        const result = await handleToolCall(message.params, auth);
-        return {
-          jsonrpc: "2.0",
-          id: message.id,
-          result
-        };
-      } catch (error) {
-        return {
-          jsonrpc: "2.0",
-          id: message.id,
-          error: {
-            code: -32603,
-            message: error instanceof Error ? error.message : "Tool execution failed"
-          }
-        };
-      }
-    }
-
-    // Method not found
+  // Define all booking tools
+  server.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
-      jsonrpc: "2.0",
-      id: message.id,
-      error: {
-        code: -32601,
-        message: "Method not found"
-      }
+      tools: [
+        {
+          name: "check_availability",
+          description: "Controlla la disponibilità dei tecnici per una data specifica",
+          inputSchema: {
+            type: "object",
+            properties: {
+              date: { type: "string", description: "Data in formato YYYY-MM-DD" },
+              technicianId: { type: "string", description: "ID specifico del tecnico (opzionale)" }
+            },
+            required: ["date"]
+          }
+        },
+        {
+          name: "create_booking",
+          description: "Crea una nuova prenotazione",
+          inputSchema: {
+            type: "object",
+            properties: {
+              date: { type: "string" },
+              slot: { type: "string", enum: ["MORNING", "AFTERNOON", "EVENING"] },
+              technicianId: { type: "string" },
+              customer: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  phone: { type: "string" },
+                  email: { type: "string" },
+                  address: { type: "string" }
+                },
+                required: ["name", "phone", "address"]
+              },
+              installationType: { type: "string" },
+              notes: { type: "string" }
+            },
+            required: ["date", "slot", "technicianId", "customer", "installationType"]
+          }
+        },
+        {
+          name: "modify_booking",
+          description: "Modifica una prenotazione esistente",
+          inputSchema: {
+            type: "object",
+            properties: {
+              bookingId: { type: "string" },
+              date: { type: "string" },
+              slot: { type: "string", enum: ["MORNING", "AFTERNOON", "EVENING"] },
+              technicianId: { type: "string" },
+              notes: { type: "string" }
+            },
+            required: ["bookingId"]
+          }
+        },
+        {
+          name: "cancel_booking",
+          description: "Cancella una prenotazione",
+          inputSchema: {
+            type: "object",
+            properties: {
+              bookingId: { type: "string" },
+              reason: { type: "string" }
+            },
+            required: ["bookingId"]
+          }
+        },
+        {
+          name: "get_bookings",
+          description: "Recupera le prenotazioni con filtri opzionali",
+          inputSchema: {
+            type: "object",
+            properties: {
+              date: { type: "string" },
+              from: { type: "string" },
+              to: { type: "string" },
+              status: { type: "string", enum: ["SCHEDULED", "COMPLETED", "CANCELLED"] },
+              technicianId: { type: "string" }
+            }
+          }
+        }
+      ]
     };
-  }
+  });
+
+  // Handle tool execution
+  server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
+    const { name, arguments: args } = request.params;
+    
+    // Get auth context from message metadata or session context
+    let auth = (extra as any)?._auth;
+    if (!auth) {
+      // Try to get from session context if available
+      const sessionId = (extra as any)?._sessionId;
+      if (sessionId) {
+        // This would need to be implemented to get auth from session storage
+        console.warn('Auth context not found in request, using default');
+        auth = { user: { id: 'system', email: 'system', role: 'ADMIN' } };
+      }
+    }
+    
+    try {
+      const result = await handleToolCall({ name, arguments: args }, auth);
+      return result;
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : 'Tool execution failed');
+    }
+  });
+
+  return server;
 }
 
-// Create a single SSE transport instance
-let transport: SimpleSSETransport | null = null;
+// Create global instances
+let mcpServer: Server | null = null;
+let sseTransport: SSEServerTransport | null = null;
 
-function getSSETransport(): SimpleSSETransport {
-  if (!transport) {
-    transport = new SimpleSSETransport();
+function getServerAndTransport() {
+  if (!mcpServer || !sseTransport) {
+    mcpServer = createMCPServer();
+    sseTransport = new SSEServerTransport();
+    
+    // Connect them together
+    mcpServer.connect(sseTransport);
   }
-  return transport;
+  
+  return { server: mcpServer, transport: sseTransport };
 }
 
 // CORS headers
@@ -285,12 +186,16 @@ export async function GET(request: NextRequest) {
       scopes: auth.scopes || []
     });
     
-    // Get SSE transport and create connection
-    const sseTransport = getSSETransport();
-    const response = sseTransport.createSSEConnection(sessionId);
+    // Get MCP server and transport
+    const { transport } = getServerAndTransport();
+    const response = transport.createSSEConnection(sessionId);
     
-    // Store cleanup handler for later use
-    // Note: cleanup will be handled when session closes naturally
+    // Set up cleanup when transport closes
+    transport.once('session-closed', (closedSessionId: string) => {
+      if (closedSessionId === sessionId) {
+        removeSessionContext(sessionId);
+      }
+    });
     
     return response;
     
@@ -343,8 +248,8 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Get SSE transport and handle message
-    const sseTransport = getSSETransport();
+    // Get MCP server and transport
+    const { transport } = getServerAndTransport();
     
     // Set auth context for this request
     setSessionContext(sessionId, {
@@ -353,8 +258,12 @@ export async function POST(request: NextRequest) {
     });
     
     try {
-      // Handle the message through the transport
-      const response = await sseTransport.handleMessage(sessionId, message, auth);
+      // Handle the message through the transport with auth context
+      const response = await transport.handleMessage(sessionId, {
+        ...message,
+        // Add auth context to the message metadata
+        _auth: auth
+      });
       
       if (response) {
         return NextResponse.json(response, { headers: corsHeaders });
