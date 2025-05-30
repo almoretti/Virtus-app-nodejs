@@ -25,7 +25,8 @@ const docsNavigation = [
   {
     title: "Integrazioni",
     items: [
-      { title: "MCP Server", href: "/docs/api/mcp" }
+      { title: "MCP Server", href: "/docs/api/mcp" },
+      { title: "n8n MCP Integration", href: "/docs/api/n8n-mcp" }
     ]
   }
 ]
