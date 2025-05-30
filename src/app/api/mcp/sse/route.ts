@@ -1,152 +1,254 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateApiAuth } from '@/lib/api-auth';
 import { setSessionContext, removeSessionContext } from '@/mcp/mcp-context';
-import { SSEServerTransport } from '@/mcp/sse-transport';
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { handleToolCall } from '@/mcp/tool-handlers';
 
-// Create MCP server instance with proper tool definitions
-function createMCPServer() {
-  const server = new Server(
-    {
-      name: 'virtus-booking-server',
-      version: '1.0.0',
-    },
-    {
-      capabilities: {
-        tools: {},
-      },
-    }
-  );
+// Manual SSE transport implementation that follows MCP protocol
+// but avoids the SDK initialization issues
+class MCPSSETransport {
+  private sessions = new Map<string, any>();
 
-  // Define all booking tools
-  server.setRequestHandler(ListToolsRequestSchema, async () => {
-    return {
-      tools: [
-        {
-          name: "check_availability",
-          description: "Controlla la disponibilità dei tecnici per una data specifica",
-          inputSchema: {
-            type: "object",
-            properties: {
-              date: { type: "string", description: "Data in formato YYYY-MM-DD" },
-              technicianId: { type: "string", description: "ID specifico del tecnico (opzionale)" }
-            },
-            required: ["date"]
+  createSSEConnection(sessionId: string): Response {
+    // Clean up existing session if any
+    if (this.sessions.has(sessionId)) {
+      this.closeSession(sessionId);
+    }
+
+    const stream = new ReadableStream({
+      start: (controller) => {
+        const session = {
+          id: sessionId,
+          controller,
+          lastActivity: new Date(),
+          initialized: false
+        };
+
+        this.sessions.set(sessionId, session);
+
+        // Send initial SSE connection established message
+        this.sendSSEMessage(sessionId, {
+          type: 'connection',
+          status: 'connected',
+          sessionId,
+          timestamp: new Date().toISOString()
+        });
+
+        // Keep-alive ping every 30 seconds
+        const keepAlive = setInterval(() => {
+          if (this.sessions.has(sessionId)) {
+            this.sendSSEMessage(sessionId, { type: 'ping' });
+          } else {
+            clearInterval(keepAlive);
           }
-        },
-        {
-          name: "create_booking",
-          description: "Crea una nuova prenotazione",
-          inputSchema: {
-            type: "object",
-            properties: {
-              date: { type: "string" },
-              slot: { type: "string", enum: ["MORNING", "AFTERNOON", "EVENING"] },
-              technicianId: { type: "string" },
-              customer: {
-                type: "object",
-                properties: {
-                  name: { type: "string" },
-                  phone: { type: "string" },
-                  email: { type: "string" },
-                  address: { type: "string" }
-                },
-                required: ["name", "phone", "address"]
-              },
-              installationType: { type: "string" },
-              notes: { type: "string" }
+        }, 30000);
+      },
+      cancel: () => {
+        this.closeSession(sessionId);
+      }
+    });
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
+    });
+  }
+
+  private closeSession(sessionId: string) {
+    const session = this.sessions.get(sessionId);
+    if (session) {
+      try {
+        session.controller.close();
+      } catch (error) {
+        // Ignore close errors
+      }
+      this.sessions.delete(sessionId);
+      removeSessionContext(sessionId);
+    }
+  }
+
+  private sendSSEMessage(sessionId: string, data: any): boolean {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      return false;
+    }
+
+    try {
+      const message = `data: ${JSON.stringify(data)}\n\n`;
+      session.controller.enqueue(new TextEncoder().encode(message));
+      session.lastActivity = new Date();
+      return true;
+    } catch (error) {
+      this.closeSession(sessionId);
+      return false;
+    }
+  }
+
+  async handleMCPMessage(sessionId: string, message: any, auth: any) {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      throw new Error(`Session ${sessionId} not found`);
+    }
+
+    session.lastActivity = new Date();
+
+    // Handle MCP protocol methods
+    switch (message.method) {
+      case 'initialize':
+        session.initialized = true;
+        return {
+          jsonrpc: "2.0",
+          id: message.id,
+          result: {
+            protocolVersion: "2024-11-05",
+            capabilities: {
+              tools: {}
             },
-            required: ["date", "slot", "technicianId", "customer", "installationType"]
-          }
-        },
-        {
-          name: "modify_booking",
-          description: "Modifica una prenotazione esistente",
-          inputSchema: {
-            type: "object",
-            properties: {
-              bookingId: { type: "string" },
-              date: { type: "string" },
-              slot: { type: "string", enum: ["MORNING", "AFTERNOON", "EVENING"] },
-              technicianId: { type: "string" },
-              notes: { type: "string" }
-            },
-            required: ["bookingId"]
-          }
-        },
-        {
-          name: "cancel_booking",
-          description: "Cancella una prenotazione",
-          inputSchema: {
-            type: "object",
-            properties: {
-              bookingId: { type: "string" },
-              reason: { type: "string" }
-            },
-            required: ["bookingId"]
-          }
-        },
-        {
-          name: "get_bookings",
-          description: "Recupera le prenotazioni con filtri opzionali",
-          inputSchema: {
-            type: "object",
-            properties: {
-              date: { type: "string" },
-              from: { type: "string" },
-              to: { type: "string" },
-              status: { type: "string", enum: ["SCHEDULED", "COMPLETED", "CANCELLED"] },
-              technicianId: { type: "string" }
+            serverInfo: {
+              name: "Virtus Booking MCP Server",
+              version: "1.0.0"
             }
           }
+        };
+
+      case 'tools/list':
+        if (!session.initialized) {
+          throw new Error('Session not initialized');
         }
-      ]
-    };
-  });
+        return {
+          jsonrpc: "2.0",
+          id: message.id,
+          result: {
+            tools: [
+              {
+                name: "check_availability",
+                description: "Controlla la disponibilità dei tecnici per una data specifica",
+                inputSchema: {
+                  type: "object",
+                  properties: {
+                    date: { type: "string", description: "Data in formato YYYY-MM-DD" },
+                    technicianId: { type: "string", description: "ID specifico del tecnico (opzionale)" }
+                  },
+                  required: ["date"]
+                }
+              },
+              {
+                name: "create_booking",
+                description: "Crea una nuova prenotazione",
+                inputSchema: {
+                  type: "object",
+                  properties: {
+                    date: { type: "string" },
+                    slot: { type: "string", enum: ["MORNING", "AFTERNOON", "EVENING"] },
+                    technicianId: { type: "string" },
+                    customer: {
+                      type: "object",
+                      properties: {
+                        name: { type: "string" },
+                        phone: { type: "string" },
+                        email: { type: "string" },
+                        address: { type: "string" }
+                      },
+                      required: ["name", "phone", "address"]
+                    },
+                    installationType: { type: "string" },
+                    notes: { type: "string" }
+                  },
+                  required: ["date", "slot", "technicianId", "customer", "installationType"]
+                }
+              },
+              {
+                name: "modify_booking",
+                description: "Modifica una prenotazione esistente",
+                inputSchema: {
+                  type: "object",
+                  properties: {
+                    bookingId: { type: "string" },
+                    date: { type: "string" },
+                    slot: { type: "string", enum: ["MORNING", "AFTERNOON", "EVENING"] },
+                    technicianId: { type: "string" },
+                    notes: { type: "string" }
+                  },
+                  required: ["bookingId"]
+                }
+              },
+              {
+                name: "cancel_booking",
+                description: "Cancella una prenotazione",
+                inputSchema: {
+                  type: "object",
+                  properties: {
+                    bookingId: { type: "string" },
+                    reason: { type: "string" }
+                  },
+                  required: ["bookingId"]
+                }
+              },
+              {
+                name: "get_bookings",
+                description: "Recupera le prenotazioni con filtri opzionali",
+                inputSchema: {
+                  type: "object",
+                  properties: {
+                    date: { type: "string" },
+                    from: { type: "string" },
+                    to: { type: "string" },
+                    status: { type: "string", enum: ["SCHEDULED", "COMPLETED", "CANCELLED"] },
+                    technicianId: { type: "string" }
+                  }
+                }
+              }
+            ]
+          }
+        };
 
-  // Handle tool execution
-  server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
-    const { name, arguments: args } = request.params;
-    
-    // Get auth context from message metadata or session context
-    let auth = (extra as any)?._auth;
-    if (!auth) {
-      // Try to get from session context if available
-      const sessionId = (extra as any)?._sessionId;
-      if (sessionId) {
-        // This would need to be implemented to get auth from session storage
-        console.warn('Auth context not found in request, using default');
-        auth = { user: { id: 'system', email: 'system', role: 'ADMIN' } };
-      }
-    }
-    
-    try {
-      const result = await handleToolCall({ name, arguments: args }, auth);
-      return result;
-    } catch (error) {
-      throw new Error(error instanceof Error ? error.message : 'Tool execution failed');
-    }
-  });
+      case 'tools/call':
+        if (!session.initialized) {
+          throw new Error('Session not initialized');
+        }
+        try {
+          const result = await handleToolCall(message.params, auth);
+          return {
+            jsonrpc: "2.0",
+            id: message.id,
+            result
+          };
+        } catch (error) {
+          return {
+            jsonrpc: "2.0",
+            id: message.id,
+            error: {
+              code: -32603,
+              message: error instanceof Error ? error.message : "Tool execution failed"
+            }
+          };
+        }
 
-  return server;
+      default:
+        return {
+          jsonrpc: "2.0",
+          id: message.id,
+          error: {
+            code: -32601,
+            message: "Method not found"
+          }
+        };
+    }
+  }
 }
 
-// Create global instances
-let mcpServer: Server | null = null;
-let sseTransport: SSEServerTransport | null = null;
+// Create a single transport instance
+let transport: MCPSSETransport | null = null;
 
-function getServerAndTransport() {
-  if (!mcpServer || !sseTransport) {
-    mcpServer = createMCPServer();
-    sseTransport = new SSEServerTransport();
-    
-    // Connect them together
-    mcpServer.connect(sseTransport);
+function getMCPTransport(): MCPSSETransport {
+  if (!transport) {
+    transport = new MCPSSETransport();
   }
-  
-  return { server: mcpServer, transport: sseTransport };
+  return transport;
 }
 
 // CORS headers
@@ -164,7 +266,7 @@ export async function OPTIONS() {
   });
 }
 
-// GET: Establish SSE connection (standard MCP SSE transport)
+// GET: Establish SSE connection (MCP protocol compliant)
 export async function GET(request: NextRequest) {
   try {
     // Validate authentication
@@ -186,16 +288,9 @@ export async function GET(request: NextRequest) {
       scopes: auth.scopes || []
     });
     
-    // Get MCP server and transport
-    const { transport } = getServerAndTransport();
+    // Get transport and create SSE connection
+    const transport = getMCPTransport();
     const response = transport.createSSEConnection(sessionId);
-    
-    // Set up cleanup when transport closes
-    transport.once('session-closed', (closedSessionId: string) => {
-      if (closedSessionId === sessionId) {
-        removeSessionContext(sessionId);
-      }
-    });
     
     return response;
     
@@ -208,7 +303,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST: Handle MCP messages (standard JSON-RPC over HTTP)
+// POST: Handle MCP messages (JSON-RPC over HTTP)
 export async function POST(request: NextRequest) {
   try {
     // Validate authentication
@@ -248,8 +343,8 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Get MCP server and transport
-    const { transport } = getServerAndTransport();
+    // Get transport and handle message
+    const transport = getMCPTransport();
     
     // Set auth context for this request
     setSessionContext(sessionId, {
@@ -258,12 +353,8 @@ export async function POST(request: NextRequest) {
     });
     
     try {
-      // Handle the message through the transport with auth context
-      const response = await transport.handleMessage(sessionId, {
-        ...message,
-        // Add auth context to the message metadata
-        _auth: auth
-      });
+      // Handle the MCP message through the transport
+      const response = await transport.handleMCPMessage(sessionId, message, auth);
       
       if (response) {
         return NextResponse.json(response, { headers: corsHeaders });
