@@ -98,9 +98,10 @@ The AI booking assistant (`/chat`) provides conversational booking interface:
   - `ChatMessage`: Renders user/assistant messages with markdown support
   - `ChatInput`: Auto-resizing textarea with send functionality
   - `Chat`: Main container managing conversation state
-- **Current State**: Mock implementation with keyword-based responses
-- **Purpose**: Allow users to book, modify, or cancel appointments via natural language
-- **Future Integration**: Ready for OpenAI/Anthropic API integration
+- **n8n Integration**: Connected to n8n webhook for AI-powered responses
+- **Webhook URL**: Configurable via `NEXT_PUBLIC_N8N_WEBHOOK_URL` or defaults to production webhook
+- **Session Management**: Unique session ID per chat for context persistence
+- **Conversation History**: Full chat history sent with each request for context-aware responses
 
 ## Development Notes
 
@@ -121,6 +122,8 @@ GOOGLE_CLIENT_SECRET="your-client-secret"
 # Email configuration (for user invitations)
 EMAIL_SERVER="smtp://user:pass@smtp.example.com:587"
 EMAIL_FROM="noreply@example.com"
+# n8n webhook for AI chat (optional)
+NEXT_PUBLIC_N8N_WEBHOOK_URL="https://n8n.moretti.cc/webhook/..."
 ```
 
 ### Common Patterns
@@ -128,6 +131,8 @@ EMAIL_FROM="noreply@example.com"
 - Auth checks use `getServerSession(authOptions)` from `src/lib/auth.ts`
 - Date/time handling uses date-fns library with Italian locale
 - Form validation happens both client-side and server-side
+- **API Calls**: Always use `api-client.ts` methods (`api.get`, `api.post`, etc.) for CSRF protection
+- **Authentication**: Use `validateApiAuth()` in API routes for both session and token auth
 - **Language**: All user-facing text must be in Italian
 - **Date format**: Italian convention "d MMMM yyyy" (e.g., "5 gennaio 2025")
 - **Time format**: 24-hour format "HH:mm" (e.g., "14:30")
@@ -135,6 +140,7 @@ EMAIL_FROM="noreply@example.com"
 - **Notifications**: Use `toast` from Sonner for all user feedback
 - **Mobile Forms**: Use Drawer component for better mobile UX
 - **Loading States**: Show skeletons or spinners during async operations
+- **Error Handling**: Always return proper error messages in Italian
 
 ## Recent Features
 
@@ -155,9 +161,11 @@ EMAIL_FROM="noreply@example.com"
 The app includes a Model Context Protocol server for LLM integration:
 
 #### MCP Endpoints
-- `/api/mcp` - Main MCP server endpoint (POST for messages, GET for SSE)
-- `/api/mcp/status` - Health check and capabilities info
-- Requires bearer token authentication
+- `/api/mcp/sse` - Standard MCP SSE transport endpoint (GET for SSE, POST for JSON-RPC)
+- `/api/mcp/v1` - Simple JSON-RPC endpoint for direct tool calls
+- `/api/mcp/test` - Health check and authentication test
+- `/api/mcp/status` - Server capabilities info
+- All endpoints require bearer token authentication
 
 #### MCP Tools Available
 1. **check_availability** - Check technician availability for dates
@@ -167,10 +175,12 @@ The app includes a Model Context Protocol server for LLM integration:
 5. **get_bookings** - List bookings with various filters
 
 #### MCP Integration
-- **n8n Integration**: Ready-made cURL examples in docs
-- **LLM Clients**: Compatible with Claude Desktop, OpenAI, etc.
+- **n8n Integration**: Standard MCP client support via SSE transport at `/api/mcp/sse`
+- **LLM Clients**: Compatible with Claude Desktop, OpenAI, and any standard MCP client
 - **Real-time Updates**: SSE support for live availability changes
-- **Session Management**: Uses `sessionId` parameter for context
+- **Session Management**: Uses `sessionId` parameter for context persistence
+- **Authentication**: Bearer token in Authorization header
+- **Transport**: SSE (Server-Sent Events) for remote connections
 
 #### MCP Configuration Files
 - `mcp-config.json` - General MCP configuration
@@ -189,6 +199,45 @@ The app includes a Model Context Protocol server for LLM integration:
 - Mobile-responsive drawer forms
 - Improved error messages in Italian
 
+## Recent Improvements (May 2025)
+
+### Security Enhancements
+- Implemented comprehensive CSRF protection with token validation
+- Added rate limiting for API endpoints
+- Input validation using Zod schemas
+- HTML sanitization with DOMPurify
+- Content Security Policy (CSP) configuration
+
+### API Client Architecture
+- Created centralized `api-client.ts` for all frontend API calls
+- Automatic CSRF token handling for all non-GET requests
+- Session cookie management with `credentials: 'same-origin'`
+- Consistent error handling across all API calls
+
+### Authentication Fixes
+- Fixed session cookie transmission in API calls
+- Resolved 403 Forbidden errors on authenticated endpoints
+- Added missing imports in API routes (getEffectiveUser)
+- Improved error logging for debugging
+
+### Production Deployment
+- Successfully deployed on Railway with PostgreSQL
+- Fixed NextAuth peer dependency issues with legacy-peer-deps
+- Created railway.toml for proper build configuration
+- Set up environment variables for production
+
+### Demo Data
+- Created comprehensive seed script for June 2025
+- 3 demo technicians with color coding
+- 54 demo appointments with realistic Italian customer data
+- Random distribution across time slots and technicians
+
+### n8n Integration
+- Implemented standard MCP SSE transport endpoint
+- Full compatibility with n8n MCP Client node
+- Proper CORS headers for cross-origin requests
+- Comprehensive documentation for n8n setup
+
 ## Known Issues & Solutions
 
 ### Windows/WSL Development
@@ -199,3 +248,8 @@ The app includes a Model Context Protocol server for LLM integration:
 ### TypeScript Strict Mode
 - Some type assertions needed for MCP SDK compatibility
 - Use `@ts-ignore` sparingly for transport type mismatches
+
+### Railway Deployment
+- Use `NPM_CONFIG_LEGACY_PEER_DEPS=true` for NextAuth compatibility
+- Ensure DATABASE_URL uses public endpoint for migrations
+- Check Railway logs for build errors
