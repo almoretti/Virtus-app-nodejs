@@ -20,6 +20,58 @@ export async function OPTIONS(request: NextRequest) {
   });
 }
 
+// Handle GET request for inspector connections
+export async function GET(request: NextRequest) {
+  try {
+    // Validate API authentication
+    const auth = await validateApiAuth(request);
+    if (!auth.success) {
+      return NextResponse.json(
+        { 
+          error: auth.error || "Authentication required",
+          status: "error"
+        },
+        { 
+          status: 401,
+          headers: corsHeaders
+        }
+      );
+    }
+
+    // Return server info for inspector
+    return NextResponse.json({
+      status: "ready",
+      server: {
+        name: "Virtus Booking MCP Server",
+        version: "1.0.0",
+        protocol: "mcp/1.0"
+      },
+      authentication: {
+        type: "bearer",
+        user: auth.user?.email
+      },
+      capabilities: {
+        tools: ["check_availability", "create_booking", "modify_booking", "cancel_booking", "get_bookings"]
+      },
+      endpoints: {
+        jsonrpc: "/api/mcp/v1"
+      }
+    }, {
+      headers: corsHeaders
+    });
+
+  } catch (error) {
+    console.error('MCP v1 GET error:', error);
+    return NextResponse.json({
+      status: "error",
+      error: "Internal server error"
+    }, {
+      status: 500,
+      headers: corsHeaders
+    });
+  }
+}
+
 // Simple JSON-RPC handler for n8n compatibility
 export async function POST(request: NextRequest) {
   try {
