@@ -5,14 +5,30 @@ import { Role } from "@prisma/client"
 import { prisma } from "./db"
 import { getImpersonation } from "./impersonation-store"
 
+// Log the environment variables (remove in production)
+console.log('Auth Config:', {
+  clientId: process.env.GOOGLE_CLIENT_ID?.substring(0, 30) + '...',
+  hasSecret: !!process.env.GOOGLE_CLIENT_SECRET,
+  nextAuthUrl: process.env.NEXTAUTH_URL,
+  nodeEnv: process.env.NODE_ENV
+})
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as any,
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      authorization: {
+        params: {
+          prompt: "consent",
+          access_type: "offline",
+          response_type: "code"
+        }
+      }
     }),
   ],
+  debug: process.env.NODE_ENV === "development",
   callbacks: {
     async session({ session, token, user }) {
       if (session.user) {
