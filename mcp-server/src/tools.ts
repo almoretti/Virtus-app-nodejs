@@ -1,5 +1,5 @@
 import { prisma } from './db.js';
-import { TimeSlot, BookingStatus } from '@prisma/client';
+import type { TimeSlot, BookingStatus } from '@prisma/client';
 import { startOfDay, endOfDay, format, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { z } from 'zod';
@@ -199,7 +199,7 @@ async function checkAvailability(args: any, auth: any) {
   // Build availability response
   const availabilityData = {
     date,
-    technicians: technicians.map(tech => ({
+    technicians: technicians.map((tech: any) => ({
       id: tech.id,
       name: tech.user.name || tech.user.email,
       color: tech.color
@@ -211,12 +211,12 @@ async function checkAvailability(args: any, auth: any) {
     }
   };
 
-  technicians.forEach(tech => {
-    const isOnTimeOff = availability.some(a => a.technicianId === tech.id);
+  technicians.forEach((tech: any) => {
+    const isOnTimeOff = availability.some((a: any) => a.technicianId === tech.id);
     
-    Object.values(TimeSlot).forEach(slot => {
-      const isBooked = bookings.some(b => b.technicianId === tech.id && b.slot === slot);
-      availabilityData.availability[slot][tech.id] = !isOnTimeOff && !isBooked;
+    Object.values(TimeSlot).forEach((slot: any) => {
+      const isBooked = bookings.some((b: any) => b.technicianId === tech.id && b.slot === slot);
+      (availabilityData.availability as any)[slot][tech.id] = !isOnTimeOff && !isBooked;
     });
   });
 
@@ -698,7 +698,7 @@ async function getBookings(args: any, auth: any) {
   }
 
   let result = `**📅 Prenotazioni trovate: ${bookings.length}**\n\n`;
-  bookings.forEach((booking, index) => {
+  bookings.forEach((booking: any, index: number) => {
     result += `${index + 1}. ${formatBookingInfo(booking)}\n---\n\n`;
   });
 

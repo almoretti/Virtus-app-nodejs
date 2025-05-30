@@ -140,7 +140,7 @@ function createMCPServer(): Server {
 }
 
 // SSE endpoint for MCP communication
-app.get('/mcp/sse', async (req: Request, res: Response) => {
+app.get('/mcp/sse', async (req: any, res: any) => {
   try {
     console.log('SSE connection request received');
     
@@ -189,7 +189,7 @@ app.get('/mcp/sse', async (req: Request, res: Response) => {
 });
 
 // HTTP POST endpoint for MCP messages (fallback)
-app.post('/mcp/sse', async (req: Request, res: Response) => {
+app.post('/mcp/sse', async (req: any, res: any) => {
   try {
     // Validate authentication
     const token = extractTokenFromRequest(req as any);
