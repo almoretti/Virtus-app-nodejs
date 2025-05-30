@@ -13,16 +13,25 @@ export default function N8nMCPDocsPage() {
     setTimeout(() => setCopiedSection(null), 2000)
   }
 
-  const n8nMCPToolExample = `{
-  "name": "Virtus Booking MCP",
-  "transport": {
-    "type": "http",
-    "config": {
-      "url": "https://virtus-app-nodejs-production.up.railway.app/api/mcp/v1",
-      "headers": {
-        "Authorization": "Bearer {{$credentials.apiKey}}"
-      }
-    }
+  const n8nSSEExample = `// n8n HTTP Request Node Configuration for SSE
+
+// 1. First, establish SSE connection:
+GET https://virtus-app-nodejs-production.up.railway.app/api/mcp/n8n?sessionId={{$guid}}
+Headers:
+  Authorization: Bearer {{$credentials.apiKey}}
+  Accept: text/event-stream
+
+// 2. Then make tool calls:
+POST https://virtus-app-nodejs-production.up.railway.app/api/mcp/n8n
+Headers:
+  Authorization: Bearer {{$credentials.apiKey}}
+  Content-Type: application/json
+Body:
+{
+  "sessionId": "{{$json.sessionId}}",
+  "tool": "check_availability",
+  "arguments": {
+    "date": "2025-06-15"
   }
 }`
 

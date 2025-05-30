@@ -4,9 +4,32 @@ import { server } from '@/mcp/lazy-server';
 import { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import { setSessionContext, removeSessionContext } from '@/mcp/mcp-context';
 
+// CORS headers for n8n compatibility
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Content-Type': 'application/json',
+};
+
+// Handle OPTIONS request for CORS preflight
+export async function OPTIONS(request: NextRequest) {
+  return new Response(null, { 
+    status: 200,
+    headers: corsHeaders
+  });
+}
+
 // Simple JSON-RPC handler for n8n compatibility
 export async function POST(request: NextRequest) {
   try {
+    // Log incoming request for debugging
+    console.log('MCP v1 request:', {
+      method: request.method,
+      headers: Object.fromEntries(request.headers.entries()),
+      url: request.url
+    });
+
     // Validate API authentication
     const auth = await validateApiAuth(request);
     if (!auth.success) {
@@ -19,11 +42,15 @@ export async function POST(request: NextRequest) {
           },
           id: null
         },
-        { status: 401 }
+        { 
+          status: 401,
+          headers: corsHeaders
+        }
       );
     }
 
     const body = await request.json();
+    console.log('MCP v1 body:', body);
     
     // Validate JSON-RPC request
     if (!body.jsonrpc || body.jsonrpc !== "2.0") {
@@ -34,6 +61,8 @@ export async function POST(request: NextRequest) {
           message: "Invalid Request"
         },
         id: body.id || null
+      }, {
+        headers: corsHeaders
       });
     }
 
@@ -162,6 +191,7 @@ export async function POST(request: NextRequest) {
             const { handleToolCall } = await import('@/mcp/tool-handlers');
             result = await handleToolCall(body.params, auth);
           } catch (toolError) {
+            console.error('Tool execution error:', toolError);
             return NextResponse.json({
               jsonrpc: "2.0",
               error: {
@@ -169,6 +199,8 @@ export async function POST(request: NextRequest) {
                 message: toolError instanceof Error ? toolError.message : "Tool execution failed"
               },
               id: body.id
+            }, {
+              headers: corsHeaders
             });
           }
           break;
@@ -181,13 +213,19 @@ export async function POST(request: NextRequest) {
               message: "Method not found"
             },
             id: body.id
+          }, {
+            headers: corsHeaders
           });
       }
+
+      console.log('MCP v1 response:', { result, id: body.id });
 
       return NextResponse.json({
         jsonrpc: "2.0",
         result,
         id: body.id
+      }, {
+        headers: corsHeaders
       });
 
     } finally {
@@ -197,6 +235,14 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('MCP v1 error:', error);
+    
+    // Try to extract ID from request body if possible
+    let requestId = null;
+    try {
+      const body = await request.json().catch(() => ({}));
+      requestId = body.id || null;
+    } catch {}
+    
     return NextResponse.json({
       jsonrpc: "2.0",
       error: {
@@ -204,7 +250,9 @@ export async function POST(request: NextRequest) {
         message: "Internal error",
         data: error instanceof Error ? error.message : "Unknown error"
       },
-      id: null
+      id: requestId
+    }, {
+      headers: corsHeaders
     });
   }
 }
