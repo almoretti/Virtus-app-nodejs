@@ -3,17 +3,26 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { Role } from "@prisma/client"
-import { getEffectiveUser } from "@/lib/auth-utils"
+import { validateApiAuth, hasScope } from "@/lib/api-auth"
 
-export async function GET() {
-  const session = await getServerSession(authOptions)
-  const effectiveUser = getEffectiveUser(session)
-  
-  if (!effectiveUser || effectiveUser.role !== Role.ADMIN) {
-    return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
-  }
-
+export async function GET(request: NextRequest) {
   try {
+    console.log("Users API - Starting authentication check")
+    const auth = await validateApiAuth(request)
+    
+    if (!auth.success) {
+      console.error("Users API - Auth failed:", auth.error)
+      return NextResponse.json({ error: auth.error }, { status: 401 })
+    }
+
+    console.log("Users API - Auth successful:", { type: auth.type, userRole: auth.user?.role, scopes: auth.scopes })
+
+    // Check if user has read permission and is admin
+    if (!hasScope(auth.scopes, 'read') || auth.user?.role !== 'ADMIN') {
+      console.error("Users API - Insufficient permissions:", { role: auth.user?.role, scopes: auth.scopes })
+      return NextResponse.json({ error: "Non autorizzato" }, { status: 403 })
+    }
+
     const users = await prisma.user.findMany({
       include: {
         technician: true,
@@ -23,9 +32,10 @@ export async function GET() {
       },
     })
 
+    console.log(`Found ${users.length} users`)
     return NextResponse.json(users)
   } catch (error) {
-    // console.error("Error fetching users:", error)
+    console.error("Error fetching users:", error)
     return NextResponse.json({ error: "Recupero utenti fallito" }, { status: 500 })
   }
 }

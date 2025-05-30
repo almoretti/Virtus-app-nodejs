@@ -38,27 +38,37 @@ export async function apiClient(url: string, options: RequestInit = {}): Promise
   return fetch(url, {
     ...options,
     headers,
+    credentials: 'same-origin', // Include session cookies
   });
 }
 
-// Convenience methods
+// Individual convenience methods for * as api imports
+export const get = (url: string) => apiClient(url, { method: 'GET' });
+
+export const post = (url: string, data?: any) => apiClient(url, {
+  method: 'POST',
+  body: data ? JSON.stringify(data) : undefined,
+});
+
+export const put = (url: string, data?: any) => apiClient(url, {
+  method: 'PUT',
+  body: data ? JSON.stringify(data) : undefined,
+});
+
+export const patch = (url: string, data?: any) => apiClient(url, {
+  method: 'PATCH',
+  body: data ? JSON.stringify(data) : undefined,
+});
+
+const deleteMethod = (url: string) => apiClient(url, { method: 'DELETE' });
+// Export delete method (delete is a reserved word, so we use this workaround)
+export { deleteMethod as delete };
+
+// Also export as object for backwards compatibility
 export const api = {
-  get: (url: string) => apiClient(url, { method: 'GET' }),
-  
-  post: (url: string, data?: any) => apiClient(url, {
-    method: 'POST',
-    body: data ? JSON.stringify(data) : undefined,
-  }),
-  
-  put: (url: string, data?: any) => apiClient(url, {
-    method: 'PUT',
-    body: data ? JSON.stringify(data) : undefined,
-  }),
-  
-  patch: (url: string, data?: any) => apiClient(url, {
-    method: 'PATCH',
-    body: data ? JSON.stringify(data) : undefined,
-  }),
-  
-  delete: (url: string) => apiClient(url, { method: 'DELETE' }),
+  get,
+  post,
+  put,
+  patch,
+  delete: deleteMethod,
 };

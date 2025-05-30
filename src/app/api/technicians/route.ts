@@ -3,16 +3,27 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { Role } from "@prisma/client"
+import { validateApiAuth, hasScope } from "@/lib/api-auth"
 import { getEffectiveUser } from "@/lib/auth-utils"
 
-export async function GET() {
-  const session = await getServerSession(authOptions)
-  
-  if (!session) {
-    return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
-  }
-
+export async function GET(request: NextRequest) {
   try {
+    console.log("Technicians API - Starting authentication check")
+    const auth = await validateApiAuth(request)
+    
+    if (!auth.success) {
+      console.error("Technicians API - Auth failed:", auth.error)
+      return NextResponse.json({ error: auth.error }, { status: 401 })
+    }
+
+    console.log("Technicians API - Auth successful:", { type: auth.type, userRole: auth.user?.role, scopes: auth.scopes })
+
+    // Check if user has read permission
+    if (!hasScope(auth.scopes, 'read')) {
+      console.error("Technicians API - Insufficient permissions for reading technicians:", { scopes: auth.scopes })
+      return NextResponse.json({ error: "Permessi insufficienti" }, { status: 403 })
+    }
+
     const technicians = await prisma.technician.findMany({
       include: {
         user: true,
@@ -22,9 +33,10 @@ export async function GET() {
       },
     })
 
+    console.log(`Found ${technicians.length} technicians`)
     return NextResponse.json(technicians)
   } catch (error) {
-    // console.error("Error fetching technicians:", error)
+    console.error("Error fetching technicians:", error)
     return NextResponse.json({ error: "Recupero tecnici fallito" }, { status: 500 })
   }
 }

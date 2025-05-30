@@ -4,21 +4,24 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { Role } from "@prisma/client"
 import { sendInvitationEmail } from "@/lib/email"
+import { validateApiAuth, hasScope } from "@/lib/api-auth"
 import { getEffectiveUser } from "@/lib/auth-utils"
 
-export async function GET() {
-  const session = await getServerSession(authOptions)
-  
-  if (!session) {
-    return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
-  }
-  
-  const effectiveUser = getEffectiveUser(session)
-  if (!effectiveUser || effectiveUser.role !== Role.ADMIN) {
-    return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
-  }
-
+export async function GET(request: NextRequest) {
   try {
+    const auth = await validateApiAuth(request)
+    
+    if (!auth.success) {
+      console.error("Auth failed:", auth.error)
+      return NextResponse.json({ error: auth.error }, { status: 401 })
+    }
+
+    // Check if user has read permission and is admin
+    if (!hasScope(auth.scopes, 'read') || auth.user?.role !== 'ADMIN') {
+      console.error("Insufficient permissions for invitations:", { role: auth.user?.role, scopes: auth.scopes })
+      return NextResponse.json({ error: "Non autorizzato" }, { status: 403 })
+    }
+
     const invitations = await prisma.userInvitation.findMany({
       include: {
         invitedBy: {
@@ -33,9 +36,10 @@ export async function GET() {
       },
     })
 
+    console.log(`Found ${invitations.length} invitations`)
     return NextResponse.json(invitations)
   } catch (error) {
-    // console.error("Error fetching invitations:", error)
+    console.error("Error fetching invitations:", error)
     return NextResponse.json({ error: "Recupero inviti fallito" }, { status: 500 })
   }
 }
