@@ -34,9 +34,8 @@ export function AccountSettings() {
     try {
       const response = await api.put(`/api/users/${session?.user?.id}`, {
         name: formData.name,
-          email: formData.email,
-          role: session?.user?.role, // Keep the same role
-        }),
+        email: formData.email,
+        role: session?.user?.role, // Keep the same role
       })
 
       if (response.ok) {
