@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useMemo } from "react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { ChatMessage } from "./chat-message"
 import { ChatInput } from "./chat-input"
@@ -33,6 +33,13 @@ export function Chat({ currentUser }: ChatProps) {
   ])
   const [isLoading, setIsLoading] = useState(false)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
+  
+  // Generate a unique session ID for this chat session
+  const sessionId = useMemo(() => {
+    const userPart = currentUser?.email?.replace(/[^a-zA-Z0-9]/g, '-') || 'anonymous'
+    const timePart = Date.now()
+    return `chat-${userPart}-${timePart}`
+  }, [currentUser?.email])
 
   useEffect(() => {
     // Scroll to bottom when new messages are added
@@ -53,27 +60,57 @@ export function Chat({ currentUser }: ChatProps) {
     setMessages(prev => [...prev, userMessage])
     setIsLoading(true)
 
-    // Simulate AI response (mock for now)
-    setTimeout(() => {
+    try {
+      // Send message to n8n webhook
+      const webhookUrl = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'https://n8n.moretti.cc/webhook/f2d9fc80-ccdb-4bf6-ac48-27ada5830139'
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: content,
+          sessionId: sessionId,
+          userId: currentUser?.email || 'anonymous',
+          userName: currentUser?.name || 'Utente',
+          conversationHistory: messages.map(msg => ({
+            role: msg.role,
+            content: msg.content
+          })),
+          timestamp: new Date().toISOString(),
+          context: {
+            platform: 'Virtus Booking System',
+            language: 'Italian',
+            capabilities: ['check_availability', 'create_booking', 'modify_booking', 'cancel_booking', 'get_bookings']
+          }
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Errore nella risposta del webhook')
+      }
+
+      const data = await response.json()
+      
+      // Extract the assistant's response from n8n webhook response
+      // The response structure depends on your n8n workflow setup
       let responseContent = ""
       
-      // Simple keyword-based responses for demo
-      const lowerContent = content.toLowerCase()
-      
-      if (lowerContent.includes("prenot") || lowerContent.includes("appuntamento")) {
-        responseContent = "Certamente! Per prenotare un appuntamento ho bisogno di alcune informazioni:\n\n1. Qual è il tuo nome completo?\n2. Il tuo indirizzo?\n3. Quale giorno preferisci?\n4. Quale fascia oraria preferisci? (Mattina 10-12, Pomeriggio 13-15, o Sera 16-18)\n\nPuoi fornirmi queste informazioni?"
-      } else if (lowerContent.includes("disponibilità") || lowerContent.includes("quando")) {
-        responseContent = "Sto verificando la disponibilità dei nostri tecnici...\n\nEcco le prossime disponibilità:\n• Lunedì: Mattina e Pomeriggio\n• Martedì: Tutte le fasce orarie\n• Mercoledì: Pomeriggio e Sera\n• Giovedì: Mattina\n• Venerdì: Pomeriggio e Sera\n\nQuale giorno e fascia oraria preferisci?"
-      } else if (lowerContent.includes("cancell") || lowerContent.includes("annull")) {
-        responseContent = "Per cancellare un appuntamento, ho bisogno del numero di prenotazione o della data dell'appuntamento. Puoi fornirmelo?"
-      } else if (lowerContent.includes("modific")) {
-        responseContent = "Per modificare un appuntamento esistente, forniscimi il numero di prenotazione o la data attuale dell'appuntamento."
-      } else if (lowerContent.includes("ciao") || lowerContent.includes("salve")) {
-        responseContent = "Ciao! Come posso aiutarti con le prenotazioni oggi?"
-      } else if (lowerContent.includes("grazie")) {
-        responseContent = "Prego! Se hai bisogno di altro aiuto con le prenotazioni, sono qui per te."
+      // Handle different possible response formats from n8n
+      if (typeof data === 'string') {
+        responseContent = data
+      } else if (data.message) {
+        responseContent = data.message
+      } else if (data.response) {
+        responseContent = data.response
+      } else if (data.text) {
+        responseContent = data.text
+      } else if (data.content) {
+        responseContent = data.content
       } else {
-        responseContent = "Posso aiutarti con:\n• Prenotare nuovi appuntamenti\n• Verificare disponibilità\n• Modificare prenotazioni esistenti\n• Cancellare appuntamenti\n\nCosa vorresti fare?"
+        // Fallback if response format is unexpected
+        responseContent = "Mi dispiace, ho avuto un problema tecnico. Potresti ripetere la tua richiesta?"
+        console.error('Unexpected n8n response format:', data)
       }
       
       const assistantMessage: Message = {
@@ -83,8 +120,21 @@ export function Chat({ currentUser }: ChatProps) {
         timestamp: new Date()
       }
       setMessages(prev => [...prev, assistantMessage])
+      
+    } catch (error) {
+      console.error('Error calling n8n webhook:', error)
+      
+      // Fallback response on error
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: "Mi dispiace, sto avendo difficoltà tecniche. Per favore riprova tra qualche istante o contatta il supporto.",
+        role: "assistant",
+        timestamp: new Date()
+      }
+      setMessages(prev => [...prev, errorMessage])
+    } finally {
       setIsLoading(false)
-    }, 1500)
+    }
   }
 
   return (
@@ -108,7 +158,7 @@ export function Chat({ currentUser }: ChatProps) {
           {isLoading && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              L'assistente sta scrivendo...
+              L'assistente sta pensando...
             </div>
           )}
         </div>
