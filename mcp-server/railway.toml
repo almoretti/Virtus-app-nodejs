@@ -1,6 +1,5 @@
 [build]
 builder = "nixpacks"
-buildCommand = "npm ci --no-cache && npm run build"
 
 [deploy]
 startCommand = "npm start"
