@@ -12,6 +12,7 @@ import { useConfirm } from "@/hooks/use-confirm"
 import { toast } from "sonner"
 import { Plus, Copy, Eye, EyeOff, Trash2, Power, PowerOff } from "lucide-react"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { api } from "@/lib/api-client"
 
 interface ApiToken {
   id: string
@@ -48,7 +49,7 @@ export function ApiTokenManagement() {
 
   const fetchTokens = async () => {
     try {
-      const response = await fetch('/api/tokens')
+      const response = await api.get('/api/tokens')
       if (response.ok) {
         const data = await response.json()
         setTokens(data)
@@ -72,16 +73,10 @@ export function ApiTokenManagement() {
     }
 
     try {
-      const response = await fetch('/api/tokens', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: formData.name,
-          expiresAt: formData.expiresAt || null,
-          scopes: formData.scopes
-        }),
+      const response = await api.post('/api/tokens', {
+        name: formData.name,
+        expiresAt: formData.expiresAt || null,
+        scopes: formData.scopes
       })
 
       if (response.ok) {
