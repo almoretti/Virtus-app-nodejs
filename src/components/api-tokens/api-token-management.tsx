@@ -56,7 +56,7 @@ export function ApiTokenManagement() {
         toast.error('Errore nel caricamento dei token')
       }
     } catch (error) {
-      console.error('Error fetching tokens:', error)
+      // console.error('Error fetching tokens:', error)
       toast.error('Errore nel caricamento dei token')
     } finally {
       setLoading(false)
@@ -99,7 +99,7 @@ export function ApiTokenManagement() {
         toast.error(error.error || 'Errore nella creazione del token')
       }
     } catch (error) {
-      console.error('Error creating token:', error)
+      // console.error('Error creating token:', error)
       toast.error('Errore nella creazione del token')
     }
   }
@@ -128,7 +128,7 @@ export function ApiTokenManagement() {
         toast.error(error.error || 'Errore nell\'eliminazione del token')
       }
     } catch (error) {
-      console.error('Error deleting token:', error)
+      // console.error('Error deleting token:', error)
       toast.error('Errore nell\'eliminazione del token')
     }
   }
@@ -153,7 +153,7 @@ export function ApiTokenManagement() {
         toast.error(error.error || 'Errore nell\'aggiornamento del token')
       }
     } catch (error) {
-      console.error('Error toggling token:', error)
+      // console.error('Error toggling token:', error)
       toast.error('Errore nell\'aggiornamento del token')
     }
   }
@@ -337,7 +337,7 @@ export function ApiTokenManagement() {
                     </div>
                     
                     <div className="text-sm text-muted-foreground space-y-1">
-                      <p>Token: {token.token}</p>
+                      <p>Token: ••••••••</p>
                       <p>Creato: {formatDate(token.createdAt)}</p>
                       <p>Ultimo uso: {formatDate(token.lastUsedAt)}</p>
                       {token.expiresAt && (

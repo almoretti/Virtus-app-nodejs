@@ -55,7 +55,7 @@ export function AccountSettings() {
         toast.error(error.error || "Errore durante l'aggiornamento del profilo")
       }
     } catch (error) {
-      console.error("Error updating profile:", error)
+      // console.error("Error updating profile:", error)
       toast.error("Errore durante l'aggiornamento del profilo")
     } finally {
       setLoading(false)

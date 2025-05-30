@@ -18,11 +18,11 @@ function getTransport(): SSEServerTransport {
     
     // Set up event handlers
     sseTransport.on('session-created', (sessionId) => {
-      console.log(`New MCP session created: ${sessionId}`);
+      // console.log(`New MCP session created: ${sessionId}`);
     });
     
     sseTransport.on('session-closed', (sessionId) => {
-      console.log(`MCP session closed: ${sessionId}`);
+      // console.log(`MCP session closed: ${sessionId}`);
     });
     
     // Handle booking notifications
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
     return response;
     
   } catch (error) {
-    console.error('Error creating SSE connection:', error);
+    // console.error('Error creating SSE connection:', error);
     return NextResponse.json(
       { error: 'Failed to create SSE connection' },
       { status: 500 }
@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
     }
     
   } catch (error) {
-    console.error('Error handling MCP message:', error);
+    // console.error('Error handling MCP message:', error);
     
     return NextResponse.json(
       {

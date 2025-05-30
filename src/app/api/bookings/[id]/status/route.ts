@@ -5,7 +5,7 @@ import { authOptions } from '@/lib/auth'
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -17,11 +17,11 @@ export async function PATCH(
       )
     }
     
-    const { id } = params
+    const { id } = await params
     const body = await request.json()
     const { status } = body
     
-    console.log('Updating booking status:', id, 'to', status)
+    // console.log('Updating booking status:', id, 'to', status)
     
     // Validate status
     const validStatuses = ['SCHEDULED', 'COMPLETED', 'CANCELLED']
@@ -68,7 +68,7 @@ export async function PATCH(
     })
     
   } catch (error) {
-    console.error('Error updating booking status:', error)
+    // console.error('Error updating booking status:', error)
     return NextResponse.json(
       { error: 'Aggiornamento stato fallito' },
       { status: 500 }

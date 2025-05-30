@@ -28,7 +28,7 @@ export function ImpersonationBanner() {
         toast.error("Errore nel terminare l'impersonazione")
       }
     } catch (error) {
-      console.error("Error stopping impersonation:", error)
+      // console.error("Error stopping impersonation:", error)
       toast.error("Errore nel terminare l'impersonazione")
     }
   }

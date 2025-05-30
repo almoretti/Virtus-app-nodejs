@@ -53,11 +53,18 @@ export function UserManagement() {
   const [showInviteDialog, setShowInviteDialog] = useState(false)
   const [showEditDrawer, setShowEditDrawer] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
-  const [inviteForm, setInviteForm] = useState({
+  const [inviteForm, setInviteForm] = useState<{
+    email: string
+    role: Role
+  }>({
     email: "",
     role: Role.CUSTOMER_SERVICE,
   })
-  const [editForm, setEditForm] = useState({
+  const [editForm, setEditForm] = useState<{
+    name: string
+    email: string
+    role: Role
+  }>({
     name: "",
     email: "",
     role: Role.CUSTOMER_SERVICE,
@@ -76,7 +83,7 @@ export function UserManagement() {
         setUsers(data)
       }
     } catch (error) {
-      console.error("Error fetching users:", error)
+      // console.error("Error fetching users:", error)
     } finally {
       setLoading(false)
     }
@@ -90,7 +97,7 @@ export function UserManagement() {
         setInvitations(data.filter((inv: Invitation) => !inv.acceptedAt))
       }
     } catch (error) {
-      console.error("Error fetching invitations:", error)
+      // console.error("Error fetching invitations:", error)
     }
   }
 
@@ -108,7 +115,7 @@ export function UserManagement() {
         fetchUsers()
       }
     } catch (error) {
-      console.error("Error updating user role:", error)
+      // console.error("Error updating user role:", error)
     }
   }
 
@@ -133,7 +140,7 @@ export function UserManagement() {
         toast.error(error.error || "Errore invio invito")
       }
     } catch (error) {
-      console.error("Error sending invitation:", error)
+      // console.error("Error sending invitation:", error)
       toast.error("Errore invio invito")
     }
   }
@@ -148,7 +155,7 @@ export function UserManagement() {
         fetchInvitations()
       }
     } catch (error) {
-      console.error("Error deleting invitation:", error)
+      // console.error("Error deleting invitation:", error)
     }
   }
 
@@ -183,7 +190,7 @@ export function UserManagement() {
         toast.error(error.error || "Errore durante l'aggiornamento dell'utente")
       }
     } catch (error) {
-      console.error("Error updating user:", error)
+      // console.error("Error updating user:", error)
       toast.error("Errore durante l'aggiornamento dell'utente")
     }
   }
@@ -212,16 +219,16 @@ export function UserManagement() {
         toast.error(error.error || "Errore durante l'eliminazione dell'utente")
       }
     } catch (error) {
-      console.error("Error deleting user:", error)
+      // console.error("Error deleting user:", error)
       toast.error("Errore durante l'eliminazione dell'utente")
     }
   }
 
   const handleImpersonate = async (userId: string) => {
-    const confirmed = await confirm(
-      "Impersona utente",
-      "Stai per impersonare questo utente. Potrai tornare al tuo account in qualsiasi momento."
-    )
+    const confirmed = await confirm({
+      title: "Impersona utente",
+      description: "Stai per impersonare questo utente. Potrai tornare al tuo account in qualsiasi momento."
+    })
     
     if (!confirmed) return
 
@@ -242,7 +249,7 @@ export function UserManagement() {
         toast.error(error.error || "Errore durante l'impersonazione")
       }
     } catch (error) {
-      console.error("Error impersonating user:", error)
+      // console.error("Error impersonating user:", error)
       toast.error("Errore durante l'impersonazione")
     }
   }

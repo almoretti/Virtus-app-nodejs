@@ -23,6 +23,7 @@ import { Label } from '@/components/ui/label'
 import { useSession } from 'next-auth/react'
 import { useConfirm } from '@/hooks/use-confirm'
 import { toast } from 'sonner'
+import { fetchWithCSRF } from '@/hooks/use-csrf'
 
 interface Booking {
   id: string
@@ -112,10 +113,10 @@ export function BookingCalendar() {
 
   const fetchBookings = async () => {
     try {
-      const response = await fetch('/api/bookings')
+      const response = await fetchWithCSRF('/api/bookings')
       if (response.ok) {
         const data = await response.json()
-        console.log('Fetched bookings:', data)
+        // Bookings fetched successfully
         
         // Filter out cancelled appointments
         const activeBookings = data.filter((booking: any) => booking.status !== 'CANCELLED')
@@ -136,12 +137,7 @@ export function BookingCalendar() {
           const startDateTime = `${dateStr}T${times.start}:00`
           const endDateTime = `${dateStr}T${times.end}:00`
           
-          console.log('Formatted booking:', {
-            date: booking.date,
-            slot: booking.slot,
-            startDateTime,
-            endDateTime
-          })
+          // Formatted booking for calendar display
           
           return {
             id: booking.id,
@@ -164,11 +160,11 @@ export function BookingCalendar() {
           }
         })
         
-        console.log('Formatted bookings for calendar:', formattedBookings)
+        // console.log('Formatted bookings for calendar:', formattedBookings)
         setBookings(formattedBookings)
       }
     } catch (error) {
-      console.error('Error fetching bookings:', error)
+      // console.error('Error fetching bookings:', error)
     }
   }
 
@@ -234,7 +230,7 @@ export function BookingCalendar() {
         setAvailability(slots)
       }
     } catch (error) {
-      console.error('Error fetching availability:', error)
+      // console.error('Error fetching availability:', error)
     }
   }
 
@@ -264,7 +260,7 @@ export function BookingCalendar() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedSlot || !selectedDate) {
-      console.error('No slot or date selected')
+      // console.error('No slot or date selected')
       return
     }
     
@@ -284,20 +280,17 @@ export function BookingCalendar() {
       notes: formData.notes,
     }
     
-    console.log('Submitting booking data:', bookingData)
+    // console.log('Submitting booking data:', bookingData)
     
     try {
-      const response = await fetch('/api/bookings', {
+      const response = await fetchWithCSRF('/api/bookings', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(bookingData),
       })
 
-      console.log('Response status:', response.status)
+      // console.log('Response status:', response.status)
       const responseData = await response.json()
-      console.log('Response data:', responseData)
+      // console.log('Response data:', responseData)
 
       if (response.ok) {
         setShowBookingDialog(false)
@@ -317,7 +310,7 @@ export function BookingCalendar() {
         toast.error(responseData.error || 'Creazione prenotazione fallita')
       }
     } catch (error) {
-      console.error('Error creating booking:', error)
+      // console.error('Error creating booking:', error)
       toast.error('Creazione prenotazione fallita')
     } finally {
       setLoading(false)
@@ -364,7 +357,7 @@ export function BookingCalendar() {
       notes: formData.notes,
     }
     
-    console.log('Updating booking:', selectedBooking.id, updateData)
+    // console.log('Updating booking:', selectedBooking.id, updateData)
     
     try {
       const response = await fetch(`/api/bookings/${selectedBooking.id}`, {
@@ -385,7 +378,7 @@ export function BookingCalendar() {
         toast.error(error.error || 'Aggiornamento prenotazione fallito')
       }
     } catch (error) {
-      console.error('Error updating booking:', error)
+      // console.error('Error updating booking:', error)
       toast.error('Aggiornamento prenotazione fallito')
     } finally {
       setLoading(false)
@@ -422,7 +415,7 @@ export function BookingCalendar() {
         toast.error(error.error || 'Eliminazione prenotazione fallita')
       }
     } catch (error) {
-      console.error('Error deleting booking:', error)
+      // console.error('Error deleting booking:', error)
       toast.error('Eliminazione prenotazione fallita')
     } finally {
       setLoading(false)

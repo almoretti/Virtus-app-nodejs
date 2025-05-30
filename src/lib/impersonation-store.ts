@@ -1,11 +1,32 @@
 // Server-side store for impersonation data
 // In production, this should be stored in Redis or database
 
-const impersonationStore = new Map<string, {
+interface ImpersonationData {
   impersonatingUserId: string
   originalUserId: string
   originalUserEmail: string
-}>()
+  createdAt: Date
+}
+
+const impersonationStore = new Map<string, ImpersonationData>()
+const IMPERSONATION_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour
+
+// Cleanup old impersonations periodically
+const cleanupInterval = setInterval(() => {
+  const now = new Date();
+  const timeout = IMPERSONATION_TIMEOUT_MS;
+  
+  for (const [userId, data] of impersonationStore.entries()) {
+    if (now.getTime() - data.createdAt.getTime() > timeout) {
+      impersonationStore.delete(userId);
+    }
+  }
+}, 10 * 60 * 1000); // Run cleanup every 10 minutes
+
+// Clear interval when module is unloaded
+if (typeof process !== 'undefined') {
+  process.on('exit', () => clearInterval(cleanupInterval));
+}
 
 export function setImpersonation(originalUserId: string, data: {
   impersonatingUserId: string
@@ -13,7 +34,8 @@ export function setImpersonation(originalUserId: string, data: {
 }) {
   impersonationStore.set(originalUserId, {
     ...data,
-    originalUserId
+    originalUserId,
+    createdAt: new Date()
   })
 }
 

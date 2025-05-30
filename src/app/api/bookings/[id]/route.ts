@@ -5,7 +5,7 @@ import { authOptions } from '@/lib/auth'
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -17,11 +17,11 @@ export async function PUT(
       )
     }
     
-    const { id } = params
+    const { id } = await params
     const body = await request.json()
     const { customer, installationType, notes, status } = body
     
-    console.log('Updating booking:', id, body)
+    // console.log('Updating booking:', id, body)
     
     // Check if booking exists
     const existingBooking = await prisma.booking.findUnique({
@@ -93,7 +93,7 @@ export async function PUT(
     })
     
   } catch (error) {
-    console.error('Error updating booking:', error)
+    // console.error('Error updating booking:', error)
     return NextResponse.json(
       { error: 'Aggiornamento prenotazione fallito' },
       { status: 500 }
@@ -103,7 +103,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -115,9 +115,9 @@ export async function DELETE(
       )
     }
     
-    const { id } = params
+    const { id } = await params
     
-    console.log('Deleting booking:', id)
+    // console.log('Deleting booking:', id)
     
     // Check if booking exists
     const existingBooking = await prisma.booking.findUnique({
@@ -146,7 +146,7 @@ export async function DELETE(
     })
     
   } catch (error) {
-    console.error('Error deleting booking:', error)
+    // console.error('Error deleting booking:', error)
     return NextResponse.json(
       { error: 'Eliminazione prenotazione fallita' },
       { status: 500 }

@@ -10,17 +10,47 @@ export interface MCPContext {
   userEmail: string;
   userRole: string;
   scopes: string[];
+  createdAt: Date;
+  lastActivity: Date;
 }
 
 // Store context per session
 const sessionContexts = new Map<string, MCPContext>();
+const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
-export function setSessionContext(sessionId: string, context: MCPContext): void {
-  sessionContexts.set(sessionId, context);
+// Cleanup old sessions periodically
+const cleanupInterval = setInterval(() => {
+  const now = new Date();
+  const timeout = SESSION_TIMEOUT_MS;
+  
+  for (const [sessionId, context] of sessionContexts.entries()) {
+    if (now.getTime() - context.lastActivity.getTime() > timeout) {
+      sessionContexts.delete(sessionId);
+    }
+  }
+}, 5 * 60 * 1000); // Run cleanup every 5 minutes
+
+// Clear interval when module is unloaded
+if (typeof process !== 'undefined') {
+  process.on('exit', () => clearInterval(cleanupInterval));
+}
+
+export function setSessionContext(sessionId: string, context: Omit<MCPContext, 'createdAt' | 'lastActivity'>): void {
+  const now = new Date();
+  sessionContexts.set(sessionId, {
+    ...context,
+    createdAt: now,
+    lastActivity: now
+  });
 }
 
 export function getSessionContext(sessionId: string): MCPContext | undefined {
-  return sessionContexts.get(sessionId);
+  const context = sessionContexts.get(sessionId);
+  if (context) {
+    // Update last activity on access
+    context.lastActivity = new Date();
+  }
+  return context;
 }
 
 export function removeSessionContext(sessionId: string): void {

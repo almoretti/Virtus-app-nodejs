@@ -41,7 +41,7 @@ export class SSEServerTransport extends EventEmitter implements Transport {
       try {
         session.controller.close();
       } catch (error) {
-        console.error(`Error closing session ${sessionId}:`, error);
+        // console.error(`Error closing session ${sessionId}:`, error);
       }
       this.sessions.delete(sessionId);
       this.emit("session-closed", sessionId);
@@ -63,8 +63,9 @@ export class SSEServerTransport extends EventEmitter implements Transport {
               'Content-Type': 'text/event-stream',
               'Cache-Control': 'no-cache',
               'Connection': 'keep-alive',
-              'Access-Control-Allow-Origin': '*',
-              'Access-Control-Allow-Headers': 'Content-Type',
+              'Access-Control-Allow-Origin': process.env.NEXTAUTH_URL || 'http://localhost:3000',
+              'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+              'Access-Control-Allow-Credentials': 'true',
             },
           }),
           controller,
@@ -102,8 +103,9 @@ export class SSEServerTransport extends EventEmitter implements Transport {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Origin': process.env.NEXTAUTH_URL || 'http://localhost:3000',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Allow-Credentials': 'true',
       },
     });
   }
@@ -222,7 +224,7 @@ export class SSEServerTransport extends EventEmitter implements Transport {
       session.lastActivity = new Date();
       return true;
     } catch (error) {
-      console.error(`Error sending to session ${sessionId}:`, error);
+      // console.error(`Error sending to session ${sessionId}:`, error);
       this.closeSession(sessionId);
       return false;
     }

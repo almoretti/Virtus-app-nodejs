@@ -3,6 +3,10 @@ import { prisma } from '@/lib/db'
 import { TimeSlot } from '@prisma/client'
 import { startOfDay, endOfDay } from 'date-fns'
 import { validateApiAuth, hasScope } from '@/lib/api-auth'
+import { checkCSRF } from '@/lib/csrf'
+import { CustomerSchema, validateUUID, validateDate, sanitizeHtml } from '@/lib/validation'
+import { z } from 'zod'
+import { logger } from '@/lib/logger'
 
 const slotMapping: Record<string, TimeSlot> = {
   '10-12': TimeSlot.MORNING,
@@ -101,7 +105,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(bookings)
     
   } catch (error) {
-    console.error('Error fetching bookings:', error)
+    logger.error('Error fetching bookings', error);
     return NextResponse.json(
       { error: 'Recupero prenotazioni fallito' },
       { status: 500 }
@@ -114,11 +118,22 @@ export async function POST(request: NextRequest) {
     const auth = await validateApiAuth(request)
     
     if (!auth.success) {
-      console.error('Unauthorized:', auth.error)
+      logger.error('Unauthorized access attempt', undefined, { error: auth.error })
       return NextResponse.json(
         { error: auth.error },
         { status: 401 }
       )
+    }
+
+    // Check CSRF token for session-based auth
+    if (auth.type === 'session') {
+      const csrfCheck = await checkCSRF(request)
+      if (!csrfCheck.valid) {
+        return NextResponse.json(
+          { error: csrfCheck.error || 'Invalid CSRF token' },
+          { status: 403 }
+        )
+      }
     }
 
     // Check if user has write permission
@@ -130,23 +145,65 @@ export async function POST(request: NextRequest) {
     }
     
     const body = await request.json()
-    console.log('Received booking request:', body)
-    const { date, slot, technicianId, customer, installationType } = body
+    // console.log('Received booking request:', body)
+    let { date, slot, technicianId, customer, installationType, notes } = body
     
     // Validate required fields
     if (!date || !slot || !technicianId || !customer || !installationType) {
-      console.error('Missing required fields:', { date, slot, technicianId, customer, installationType })
+      logger.error('Missing required fields', undefined, { date, slot, technicianId, customer, installationType });
       return NextResponse.json(
         { error: 'Campi obbligatori mancanti' },
         { status: 400 }
       )
     }
+
+    // Validate date format
+    const validDate = validateDate(date)
+    if (!validDate) {
+      return NextResponse.json(
+        { error: 'Data non valida. Usa il formato YYYY-MM-DD' },
+        { status: 400 }
+      )
+    }
+
+    // Validate technician ID
+    const validTechnicianId = validateUUID(technicianId)
+    if (!validTechnicianId) {
+      return NextResponse.json(
+        { error: 'ID tecnico non valido' },
+        { status: 400 }
+      )
+    }
+
+    // Validate and sanitize customer data
+    try {
+      const validatedCustomer = CustomerSchema.parse(customer)
+      customer = {
+        name: sanitizeHtml(validatedCustomer.name),
+        phone: validatedCustomer.phone,
+        email: validatedCustomer.email ? sanitizeHtml(validatedCustomer.email) : '',
+        address: sanitizeHtml(validatedCustomer.address)
+      }
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const errors = error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
+        return NextResponse.json(
+          { error: `Dati cliente non validi: ${errors}` },
+          { status: 400 }
+        )
+      }
+    }
+
+    // Sanitize notes if provided
+    if (notes) {
+      notes = sanitizeHtml(notes)
+    }
     
     // Convert slot string to enum
     const timeSlot = slotMapping[slot]
-    console.log('Slot mapping:', slot, '->', timeSlot)
+    // console.log('Slot mapping:', slot, '->', timeSlot)
     if (!timeSlot) {
-      console.error('Invalid time slot:', slot)
+      logger.error('Invalid time slot', undefined, { slot });
       return NextResponse.json(
         { error: 'Fascia oraria non valida' },
         { status: 400 }
@@ -167,14 +224,14 @@ export async function POST(request: NextRequest) {
                         timeSlot === TimeSlot.AFTERNOON ? 13 : 16
         
         if (slotHour <= currentHour) {
-          console.error('Attempted to book past time slot:', timeSlot, 'at', currentHour)
+          logger.error('Attempted to book past time slot', undefined, { timeSlot, currentHour });
           return NextResponse.json(
             { error: 'Non è possibile prenotare appuntamenti nel passato' },
             { status: 400 }
           )
         }
       } else {
-        console.error('Attempted to book past date:', date)
+        logger.error('Attempted to book past date', undefined, { date });
         return NextResponse.json(
           { error: 'Cannot book appointments in the past' },
           { status: 400 }
@@ -286,7 +343,7 @@ export async function POST(request: NextRequest) {
         technicianId,
         installationTypeId: installationTypeRecord.id,
         createdById: auth.user!.id,
-        notes: body.notes || null,
+        notes: notes || null,
       },
       include: {
         customer: true,
@@ -316,7 +373,7 @@ export async function POST(request: NextRequest) {
     })
     
   } catch (error) {
-    console.error('Error creating booking:', error)
+    logger.error('Error creating booking', error);
     return NextResponse.json(
       { error: 'Creazione prenotazione fallita' },
       { status: 500 }

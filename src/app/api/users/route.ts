@@ -25,7 +25,7 @@ export async function GET() {
 
     return NextResponse.json(users)
   } catch (error) {
-    console.error("Error fetching users:", error)
+    // console.error("Error fetching users:", error)
     return NextResponse.json({ error: "Recupero utenti fallito" }, { status: 500 })
   }
 }
@@ -51,7 +51,7 @@ export async function PATCH(req: NextRequest) {
 
     return NextResponse.json(updatedUser)
   } catch (error) {
-    console.error("Error updating user:", error)
+    // console.error("Error updating user:", error)
     return NextResponse.json({ error: "Aggiornamento utente fallito" }, { status: 500 })
   }
 }

@@ -6,7 +6,7 @@ import { Role } from '@prisma/client'
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -18,7 +18,7 @@ export async function PUT(
       )
     }
     
-    const { id } = params
+    const { id } = await params
     
     // Users can update their own profile, admins can update anyone
     if (session.user.id !== id && session.user.role !== Role.ADMIN) {
@@ -74,7 +74,7 @@ export async function PUT(
     })
     
   } catch (error) {
-    console.error('Error updating user:', error)
+    // console.error('Error updating user:', error)
     return NextResponse.json(
       { error: 'Aggiornamento utente fallito' },
       { status: 500 }
@@ -84,7 +84,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -96,7 +96,7 @@ export async function DELETE(
       )
     }
     
-    const { id } = params
+    const { id } = await params
     
     // Don't allow users to delete themselves
     if (id === session.user.id) {
@@ -144,7 +144,7 @@ export async function DELETE(
     })
     
   } catch (error) {
-    console.error('Error deleting user:', error)
+    // console.error('Error deleting user:', error)
     return NextResponse.json(
       { error: 'Eliminazione utente fallita' },
       { status: 500 }

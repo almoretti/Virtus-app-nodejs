@@ -2,9 +2,11 @@ import { NextRequest } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { createHash } from 'crypto'
 
 interface AuthResult {
   success: boolean
+  type?: 'session' | 'token'
   user?: {
     id: string
     email: string
@@ -27,10 +29,13 @@ export async function validateApiAuth(request: NextRequest): Promise<AuthResult>
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.substring(7) // Remove "Bearer " prefix
       
+      // Hash the incoming token to compare with stored hash
+      const hashedToken = createHash('sha256').update(token).digest('hex')
+      
       // Validate the API token
       const apiToken = await prisma.apiToken.findFirst({
         where: {
-          token,
+          token: hashedToken,
           isActive: true
         },
         include: {
@@ -68,7 +73,13 @@ export async function validateApiAuth(request: NextRequest): Promise<AuthResult>
       
       return {
         success: true,
-        user: apiToken.user,
+        type: 'token',
+        user: {
+          id: apiToken.user.id,
+          email: apiToken.user.email,
+          name: apiToken.user.name || undefined,
+          role: apiToken.user.role.toString()
+        },
         scopes: apiToken.scopes ? JSON.parse(apiToken.scopes) : []
       }
     }
@@ -85,6 +96,7 @@ export async function validateApiAuth(request: NextRequest): Promise<AuthResult>
     
     return {
       success: true,
+      type: 'session',
       user: {
         id: session.user.id,
         email: session.user.email!,
@@ -94,7 +106,7 @@ export async function validateApiAuth(request: NextRequest): Promise<AuthResult>
       scopes: ['read', 'write', 'admin'] // Session users have all permissions
     }
   } catch (error) {
-    console.error('Error validating API auth:', error)
+    // console.error('Error validating API auth:', error)
     return {
       success: false,
       error: 'Errore di autenticazione'

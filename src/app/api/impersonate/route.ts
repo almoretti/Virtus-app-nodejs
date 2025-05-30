@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
       }
     })
   } catch (error) {
-    console.error("Errore impersonazione:", error)
+    // console.error("Errore impersonazione:", error)
     return NextResponse.json({ error: "Errore interno del server" }, { status: 500 })
   }
 }
@@ -79,7 +79,7 @@ export async function DELETE(request: NextRequest) {
     
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("Errore stop impersonazione:", error)
+    // console.error("Errore stop impersonazione:", error)
     return NextResponse.json({ error: "Errore interno del server" }, { status: 500 })
   }
 }

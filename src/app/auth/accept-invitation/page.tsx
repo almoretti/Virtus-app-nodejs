@@ -33,7 +33,7 @@ export default function AcceptInvitation() {
         setStatus('invalid')
       }
     } catch (error) {
-      console.error('Error checking invitation:', error)
+      // console.error('Error checking invitation:', error)
       setStatus('invalid')
     }
   }

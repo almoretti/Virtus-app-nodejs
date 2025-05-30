@@ -14,7 +14,7 @@ export async function GET() {
   }
   
   const effectiveUser = getEffectiveUser(session)
-  if (effectiveUser.role !== Role.ADMIN) {
+  if (!effectiveUser || effectiveUser.role !== Role.ADMIN) {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
   }
 
@@ -35,7 +35,7 @@ export async function GET() {
 
     return NextResponse.json(invitations)
   } catch (error) {
-    console.error("Error fetching invitations:", error)
+    // console.error("Error fetching invitations:", error)
     return NextResponse.json({ error: "Recupero inviti fallito" }, { status: 500 })
   }
 }
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
   }
   
   const effectiveUser = getEffectiveUser(session)
-  if (effectiveUser.role !== Role.ADMIN) {
+  if (!effectiveUser || effectiveUser.role !== Role.ADMIN) {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
   }
 
@@ -101,9 +101,9 @@ export async function POST(req: NextRequest) {
         role,
         expiresAt,
       })
-      console.log("Invitation email sent successfully to:", email)
+      // console.log("Invitation email sent successfully to:", email)
     } catch (emailError) {
-      console.error("Failed to send invitation email:", emailError)
+      // console.error("Failed to send invitation email:", emailError)
       // Delete the invitation if email fails
       await prisma.userInvitation.delete({ where: { id: invitation.id } })
       return NextResponse.json({ 
@@ -123,7 +123,7 @@ export async function POST(req: NextRequest) {
       },
     })
   } catch (error) {
-    console.error("Error creating invitation:", error)
+    // console.error("Error creating invitation:", error)
     return NextResponse.json({ error: "Creazione invito fallita" }, { status: 500 })
   }
 }
@@ -136,7 +136,7 @@ export async function DELETE(req: NextRequest) {
   }
   
   const effectiveUser = getEffectiveUser(session)
-  if (effectiveUser.role !== Role.ADMIN) {
+  if (!effectiveUser || effectiveUser.role !== Role.ADMIN) {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
   }
 
@@ -154,7 +154,7 @@ export async function DELETE(req: NextRequest) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("Error deleting invitation:", error)
+    // console.error("Error deleting invitation:", error)
     return NextResponse.json({ error: "Eliminazione invito fallita" }, { status: 500 })
   }
 }

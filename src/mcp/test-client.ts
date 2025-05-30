@@ -11,7 +11,7 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 
 async function testMCPServer() {
-  console.log('🧪 Testing Virtus Booking MCP Server...\n');
+  // console.log('🧪 Testing Virtus Booking MCP Server...\n');
   
   try {
     // Create client and transport
@@ -28,42 +28,42 @@ async function testMCPServer() {
     });
     
     await client.connect(transport);
-    console.log('✅ Connected to MCP server\n');
+    // console.log('✅ Connected to MCP server\n');
     
     // Test 1: List available tools
-    console.log('📋 Testing tool listing...');
+    // console.log('📋 Testing tool listing...');
     const tools = await client.listTools();
-    console.log(`Found ${tools.tools.length} tools:`);
+    // console.log(`Found ${tools.tools.length} tools:`);
     tools.tools.forEach(tool => {
-      console.log(`  - ${tool.name}: ${tool.description}`);
+      // console.log(`  - ${tool.name}: ${tool.description}`);
     });
-    console.log('');
+    // console.log('');
     
     // Test 2: List available resources
-    console.log('📚 Testing resource listing...');
+    // console.log('📚 Testing resource listing...');
     const resources = await client.listResources();
-    console.log(`Found ${resources.resources.length} resources:`);
+    // console.log(`Found ${resources.resources.length} resources:`);
     resources.resources.forEach(resource => {
-      console.log(`  - ${resource.uri}`);
+      // console.log(`  - ${resource.uri}`);
     });
-    console.log('');
+    // console.log('');
     
     // Test 3: Read technicians resource
-    console.log('👷 Testing technicians resource...');
+    // console.log('👷 Testing technicians resource...');
     try {
       const techniciansResult = await client.readResource({ uri: 'technicians://list' });
       const technicians = JSON.parse(techniciansResult.contents[0].text);
-      console.log(`Found ${technicians.length} active technicians:`);
+      // console.log(`Found ${technicians.length} active technicians:`);
       technicians.forEach((tech: any) => {
-        console.log(`  - ${tech.name} (${tech.email}) - Color: ${tech.color}`);
+        // console.log(`  - ${tech.name} (${tech.email}) - Color: ${tech.color}`);
       });
     } catch (error) {
-      console.log(`❌ Error reading technicians: ${error instanceof Error ? error.message : error}`);
+      // console.log(`❌ Error reading technicians: ${error instanceof Error ? error.message : error}`);
     }
-    console.log('');
+    // console.log('');
     
     // Test 4: Check availability for today
-    console.log('📅 Testing availability check...');
+    // console.log('📅 Testing availability check...');
     const today = new Date().toISOString().split('T')[0];
     try {
       const availabilityResult = await client.callTool({
@@ -71,15 +71,15 @@ async function testMCPServer() {
         arguments: { date: today }
       });
       
-      console.log('Availability result:');
-      console.log(availabilityResult.content[0].text);
+      // console.log('Availability result:');
+      // console.log(availabilityResult.content[0].text);
     } catch (error) {
-      console.log(`❌ Error checking availability: ${error instanceof Error ? error.message : error}`);
+      // console.log(`❌ Error checking availability: ${error instanceof Error ? error.message : error}`);
     }
-    console.log('');
+    // console.log('');
     
     // Test 5: Get recent bookings
-    console.log('📋 Testing booking retrieval...');
+    // console.log('📋 Testing booking retrieval...');
     try {
       const bookingsResult = await client.callTool({
         name: 'get_bookings',
@@ -89,20 +89,20 @@ async function testMCPServer() {
         }
       });
       
-      console.log('Recent bookings:');
-      console.log(bookingsResult.content[0].text);
+      // console.log('Recent bookings:');
+      // console.log(bookingsResult.content[0].text);
     } catch (error) {
-      console.log(`❌ Error getting bookings: ${error instanceof Error ? error.message : error}`);
+      // console.log(`❌ Error getting bookings: ${error instanceof Error ? error.message : error}`);
     }
-    console.log('');
+    // console.log('');
     
     // Test 6: Test prompt
-    console.log('💡 Testing booking assistant prompt...');
+    // console.log('💡 Testing booking assistant prompt...');
     try {
       const prompts = await client.listPrompts();
-      console.log(`Found ${prompts.prompts.length} prompts:`);
+      // console.log(`Found ${prompts.prompts.length} prompts:`);
       prompts.prompts.forEach(prompt => {
-        console.log(`  - ${prompt.name}: ${prompt.description || 'No description'}`);
+        // console.log(`  - ${prompt.name}: ${prompt.description || 'No description'}`);
       });
       
       if (prompts.prompts.length > 0) {
@@ -114,21 +114,21 @@ async function testMCPServer() {
           }
         });
         
-        console.log('Prompt result:');
-        console.log(promptResult.messages[0].content.text);
+        // console.log('Prompt result:');
+        // console.log(promptResult.messages[0].content.text);
       }
     } catch (error) {
-      console.log(`❌ Error testing prompt: ${error instanceof Error ? error.message : error}`);
+      // console.log(`❌ Error testing prompt: ${error instanceof Error ? error.message : error}`);
     }
-    console.log('');
+    // console.log('');
     
-    console.log('✅ All tests completed!\n');
+    // console.log('✅ All tests completed!\n');
     
     // Close connection
     await client.close();
     
   } catch (error) {
-    console.error('❌ Test failed:', error);
+    // console.error('❌ Test failed:', error);
     process.exit(1);
   }
 }
@@ -136,10 +136,10 @@ async function testMCPServer() {
 // Run tests
 testMCPServer()
   .then(() => {
-    console.log('🎉 MCP Server test completed successfully!');
+    // console.log('🎉 MCP Server test completed successfully!');
     process.exit(0);
   })
   .catch((error) => {
-    console.error('💥 Test suite failed:', error);
+    // console.error('💥 Test suite failed:', error);
     process.exit(1);
   });

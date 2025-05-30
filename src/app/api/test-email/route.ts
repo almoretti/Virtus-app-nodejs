@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
       message: "Email di test inviata con successo!" 
     })
   } catch (error) {
-    console.error("Error sending test email:", error)
+    // console.error("Error sending test email:", error)
     return NextResponse.json({ 
       error: "Errore invio email di test. Verifica la configurazione." 
     }, { status: 500 })

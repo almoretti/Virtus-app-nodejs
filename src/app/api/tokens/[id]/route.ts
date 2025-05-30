@@ -7,7 +7,7 @@ import { getEffectiveUser } from '@/lib/auth-utils'
 // DELETE - Remove an API token
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -20,14 +20,14 @@ export async function DELETE(
     }
     
     const effectiveUser = getEffectiveUser(session)
-    if (effectiveUser.role !== 'ADMIN') {
+    if (!effectiveUser || effectiveUser.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Non autorizzato - solo admin' },
         { status: 403 }
       )
     }
 
-    const tokenId = params.id
+    const { id: tokenId } = await params
 
     // Verify the token belongs to the current user
     const existingToken = await prisma.apiToken.findFirst({
@@ -54,7 +54,7 @@ export async function DELETE(
       message: 'Token eliminato con successo'
     })
   } catch (error) {
-    console.error('Error deleting API token:', error)
+    // console.error('Error deleting API token:', error)
     return NextResponse.json(
       { error: 'Eliminazione token fallita' },
       { status: 500 }
@@ -65,7 +65,7 @@ export async function DELETE(
 // PATCH - Update token (deactivate/reactivate)
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -78,7 +78,7 @@ export async function PATCH(
     }
     
     const effectiveUser = getEffectiveUser(session)
-    if (effectiveUser.role !== 'ADMIN') {
+    if (!effectiveUser || effectiveUser.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Non autorizzato - solo admin' },
         { status: 403 }
@@ -87,7 +87,7 @@ export async function PATCH(
 
     const body = await request.json()
     const { isActive } = body
-    const tokenId = params.id
+    const { id: tokenId } = await params
 
     if (typeof isActive !== 'boolean') {
       return NextResponse.json(
@@ -127,7 +127,7 @@ export async function PATCH(
       message: `Token ${isActive ? 'attivato' : 'disattivato'} con successo`
     })
   } catch (error) {
-    console.error('Error updating API token:', error)
+    // console.error('Error updating API token:', error)
     return NextResponse.json(
       { error: 'Aggiornamento token fallito' },
       { status: 500 }

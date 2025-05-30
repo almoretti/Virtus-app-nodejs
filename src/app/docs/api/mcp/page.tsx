@@ -248,13 +248,13 @@ eventSource.onmessage = (event) => {
   
   switch (data.type) {
     case 'connection-established':
-      console.log('Connesso al server MCP');
+      // console.log('Connesso al server MCP');
       break;
     case 'booking-notification':
-      console.log(\`Prenotazione \${data.event}: \`, data.booking);
+      // console.log(\`Prenotazione \${data.event}: \`, data.booking);
       break;
     case 'availability-update':
-      console.log(\`Disponibilità aggiornata per \${data.date}\`);
+      // console.log(\`Disponibilità aggiornata per \${data.date}\`);
       break;
   }
 };`}</code>

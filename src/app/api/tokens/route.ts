@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { randomBytes } from 'crypto'
+import { randomBytes, createHash } from 'crypto'
 import { getEffectiveUser } from '@/lib/auth-utils'
 
 // GET - List all API tokens for the current user (admin only)
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     }
     
     const effectiveUser = getEffectiveUser(session)
-    if (effectiveUser.role !== 'ADMIN') {
+    if (!effectiveUser || effectiveUser.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Non autorizzato - solo admin' },
         { status: 403 }
@@ -45,16 +45,16 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Mask the tokens for security (show only first 8 chars)
+    // Don't return the hashed tokens at all for security
     const maskedTokens = tokens.map(token => ({
       ...token,
-      token: `${token.token.substring(0, 8)}...`,
+      token: undefined, // Remove token field completely
       scopes: token.scopes ? JSON.parse(token.scopes) : []
     }))
 
     return NextResponse.json(maskedTokens)
   } catch (error) {
-    console.error('Error fetching API tokens:', error)
+    // console.error('Error fetching API tokens:', error)
     return NextResponse.json(
       { error: 'Recupero token fallito' },
       { status: 500 }
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     }
     
     const effectiveUser = getEffectiveUser(session)
-    if (effectiveUser.role !== 'ADMIN') {
+    if (!effectiveUser || effectiveUser.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Non autorizzato - solo admin' },
         { status: 403 }
@@ -93,7 +93,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate a secure random token
-    const token = `vb_${randomBytes(32).toString('hex')}`
+    const tokenValue = randomBytes(32).toString('hex')
+    const token = `vb_${tokenValue}`
+    
+    // Hash the token for storage
+    const hashedToken = createHash('sha256').update(token).digest('hex')
 
     // Validate expiration date if provided
     let expirationDate = null
@@ -124,7 +128,7 @@ export async function POST(request: NextRequest) {
     const apiToken = await prisma.apiToken.create({
       data: {
         name: name.trim(),
-        token,
+        token: hashedToken, // Store hashed token
         userId: session.user.id,
         expiresAt: expirationDate,
         scopes: scopesJson
@@ -134,14 +138,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       id: apiToken.id,
       name: apiToken.name,
-      token: apiToken.token, // Return full token only on creation
+      token: token, // Return unhashed token only on creation
       expiresAt: apiToken.expiresAt,
       scopes: scopesJson ? JSON.parse(scopesJson) : [],
       createdAt: apiToken.createdAt,
       message: 'Token API creato con successo. Salvalo in un posto sicuro - non potrai vederlo di nuovo.'
     })
   } catch (error) {
-    console.error('Error creating API token:', error)
+    // console.error('Error creating API token:', error)
     return NextResponse.json(
       { error: 'Creazione token fallita' },
       { status: 500 }

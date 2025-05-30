@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(status);
     
   } catch (error) {
-    console.error('MCP status check failed:', error);
+    // console.error('MCP status check failed:', error);
     
     return NextResponse.json({
       status: 'error',

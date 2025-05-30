@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
       invitedBy: invitation.invitedBy,
     })
   } catch (error) {
-    console.error("Error validating invitation:", error)
+    // console.error("Error validating invitation:", error)
     return NextResponse.json({ error: "Errore validazione invito" }, { status: 500 })
   }
 }

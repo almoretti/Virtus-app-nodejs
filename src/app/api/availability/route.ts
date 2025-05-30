@@ -184,7 +184,7 @@ export async function GET(request: NextRequest) {
     }
     
   } catch (error) {
-    console.error('Error checking availability:', error)
+    // console.error('Error checking availability:', error)
     return NextResponse.json(
       { error: 'Controllo disponibilità fallito' },
       { status: 500 }

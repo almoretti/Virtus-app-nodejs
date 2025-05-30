@@ -44,7 +44,7 @@ export default function CompleteRegistration() {
         setError(data.error || 'Errore completamento registrazione')
       }
     } catch (error) {
-      console.error('Error completing registration:', error)
+      // console.error('Error completing registration:', error)
       setError('Errore completamento registrazione')
     }
   }

@@ -24,7 +24,7 @@ export async function GET() {
 
     return NextResponse.json(technicians)
   } catch (error) {
-    console.error("Error fetching technicians:", error)
+    // console.error("Error fetching technicians:", error)
     return NextResponse.json({ error: "Recupero tecnici fallito" }, { status: 500 })
   }
 }
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(technician)
   } catch (error) {
-    console.error("Error creating technician:", error)
+    // console.error("Error creating technician:", error)
     return NextResponse.json({ error: "Creazione tecnico fallita" }, { status: 500 })
   }
 }
@@ -119,7 +119,7 @@ export async function PATCH(req: NextRequest) {
 
     return NextResponse.json(updatedTechnician)
   } catch (error) {
-    console.error("Error updating technician:", error)
+    // console.error("Error updating technician:", error)
     return NextResponse.json({ error: "Aggiornamento tecnico fallito" }, { status: 500 })
   }
 }

@@ -16,7 +16,7 @@ import { server } from './booking-server';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
 async function main() {
-  console.error('Starting Virtus Booking MCP Server...');
+  // console.error('Starting Virtus Booking MCP Server...');
   
   try {
     // Create stdio transport for direct LLM communication
@@ -25,47 +25,47 @@ async function main() {
     // Connect server to transport
     await server.connect(transport);
     
-    console.error('✅ Virtus Booking MCP Server is ready!');
-    console.error('📋 Available tools:');
-    console.error('  - check_availability: Check technician availability for dates');
-    console.error('  - create_booking: Create new appointment bookings');
-    console.error('  - modify_booking: Modify existing bookings');
-    console.error('  - cancel_booking: Cancel appointments');
-    console.error('  - get_bookings: Retrieve booking information');
-    console.error('');
-    console.error('📚 Available resources:');
-    console.error('  - technicians://list: List of active technicians');
-    console.error('  - installation-types://list: Available installation types');
-    console.error('');
-    console.error('💡 Available prompts:');
-    console.error('  - booking_assistant: Guided booking assistance');
-    console.error('');
-    console.error('🌐 System: Water filtration technician booking management');
-    console.error('🇮🇹 Language: Italian interface (all responses in Italian)');
-    console.error('');
+    // console.error('✅ Virtus Booking MCP Server is ready!');
+    // console.error('📋 Available tools:');
+    // console.error('  - check_availability: Check technician availability for dates');
+    // console.error('  - create_booking: Create new appointment bookings');
+    // console.error('  - modify_booking: Modify existing bookings');
+    // console.error('  - cancel_booking: Cancel appointments');
+    // console.error('  - get_bookings: Retrieve booking information');
+    // console.error('');
+    // console.error('📚 Available resources:');
+    // console.error('  - technicians://list: List of active technicians');
+    // console.error('  - installation-types://list: Available installation types');
+    // console.error('');
+    // console.error('💡 Available prompts:');
+    // console.error('  - booking_assistant: Guided booking assistance');
+    // console.error('');
+    // console.error('🌐 System: Water filtration technician booking management');
+    // console.error('🇮🇹 Language: Italian interface (all responses in Italian)');
+    // console.error('');
     
     // Keep the process running
     process.stdin.resume();
     
   } catch (error) {
-    console.error('❌ Failed to start MCP server:', error);
+    // console.error('❌ Failed to start MCP server:', error);
     process.exit(1);
   }
 }
 
 // Handle graceful shutdown
 process.on('SIGINT', () => {
-  console.error('\n🛑 Shutting down Virtus Booking MCP Server...');
+  // console.error('\n🛑 Shutting down Virtus Booking MCP Server...');
   process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-  console.error('\n🛑 Shutting down Virtus Booking MCP Server...');
+  // console.error('\n🛑 Shutting down Virtus Booking MCP Server...');
   process.exit(0);
 });
 
 // Start the server
 main().catch((error) => {
-  console.error('💥 Fatal error:', error);
+  // console.error('💥 Fatal error:', error);
   process.exit(1);
 });

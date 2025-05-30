@@ -14,7 +14,7 @@ export default async function TechniciansPage() {
   }
 
   const effectiveUser = getEffectiveUser(session)
-  if (effectiveUser.role !== Role.ADMIN) {
+  if (!effectiveUser || effectiveUser.role !== Role.ADMIN) {
     redirect("/")
   }
 

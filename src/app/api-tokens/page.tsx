@@ -14,7 +14,7 @@ export default async function ApiTokensPage() {
 
   // Only admins can manage API tokens
   const effectiveUser = getEffectiveUser(session)
-  if (effectiveUser.role !== "ADMIN") {
+  if (!effectiveUser || effectiveUser.role !== "ADMIN") {
     redirect("/")
   }
 

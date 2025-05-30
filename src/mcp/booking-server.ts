@@ -12,6 +12,7 @@ import { TimeSlot } from "@prisma/client";
 import { startOfDay, endOfDay, format, parseISO } from "date-fns";
 import { it } from "date-fns/locale";
 import { getSessionContext } from './mcp-context';
+import { validateUUID, validateDate, CustomerSchema, sanitizeHtml } from "@/lib/validation";
 
 // Schema definitions for booking operations
 const CheckAvailabilitySchema = z.object({
@@ -159,6 +160,30 @@ server.tool(
   CheckAvailabilitySchema,
   async ({ date, technicianId }) => {
     try {
+      // Validate date input
+      const validDate = validateDate(date);
+      if (!validDate) {
+        return {
+          content: [{
+            type: "text",
+            text: "❌ Data non valida. Usa il formato YYYY-MM-DD."
+          }]
+        };
+      }
+
+      // Validate technician ID if provided
+      if (technicianId) {
+        const validTechnicianId = validateUUID(technicianId);
+        if (!validTechnicianId) {
+          return {
+            content: [{
+              type: "text",
+              text: "❌ ID tecnico non valido. L'ID deve essere un UUID valido."
+            }]
+          };
+        }
+      }
+
       const dayStart = startOfDay(parseISO(date));
       const dayEnd = endOfDay(parseISO(date));
 
@@ -234,7 +259,7 @@ server.tool(
       };
 
     } catch (error) {
-      console.error('Error checking availability:', error);
+      // console.error('Error checking availability:', error);
       return {
         content: [{
           type: "text",
@@ -251,6 +276,53 @@ server.tool(
   CreateBookingSchema,
   async ({ date, slot, technicianId, customer, installationType, notes }, request) => {
     try {
+      // Validate all inputs
+      const validDate = validateDate(date);
+      if (!validDate) {
+        return {
+          content: [{
+            type: "text",
+            text: "❌ Data non valida. Usa il formato YYYY-MM-DD."
+          }]
+        };
+      }
+
+      const validTechnicianId = validateUUID(technicianId);
+      if (!validTechnicianId) {
+        return {
+          content: [{
+            type: "text",
+            text: "❌ ID tecnico non valido. L'ID deve essere un UUID valido."
+          }]
+        };
+      }
+
+      // Validate and sanitize customer data
+      try {
+        const validatedCustomer = CustomerSchema.parse(customer);
+        customer = {
+          name: sanitizeHtml(validatedCustomer.name),
+          phone: validatedCustomer.phone,
+          email: validatedCustomer.email ? sanitizeHtml(validatedCustomer.email) : undefined,
+          address: sanitizeHtml(validatedCustomer.address)
+        };
+      } catch (validationError) {
+        if (validationError instanceof z.ZodError) {
+          const errors = validationError.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+          return {
+            content: [{
+              type: "text",
+              text: `❌ Dati cliente non validi: ${errors}`
+            }]
+          };
+        }
+      }
+
+      // Sanitize notes if provided
+      if (notes) {
+        notes = sanitizeHtml(notes);
+      }
+
       // Get authenticated user from session context
       const sessionId = (request as any)?.metadata?.sessionId;
       const context = sessionId ? getSessionContext(sessionId) : undefined;
@@ -427,7 +499,7 @@ server.tool(
       };
 
     } catch (error) {
-      console.error('Error creating booking:', error);
+      // console.error('Error creating booking:', error);
       return {
         content: [{
           type: "text",
@@ -444,6 +516,48 @@ server.tool(
   ModifyBookingSchema,
   async ({ bookingId, date, slot, technicianId, notes }) => {
     try {
+      // Validate booking ID
+      const validBookingId = validateUUID(bookingId);
+      if (!validBookingId) {
+        return {
+          content: [{
+            type: "text",
+            text: "❌ ID prenotazione non valido. L'ID deve essere un UUID valido."
+          }]
+        };
+      }
+
+      // Validate date if provided
+      if (date) {
+        const validDate = validateDate(date);
+        if (!validDate) {
+          return {
+            content: [{
+              type: "text",
+              text: "❌ Data non valida. Usa il formato YYYY-MM-DD."
+            }]
+          };
+        }
+      }
+
+      // Validate technician ID if provided
+      if (technicianId) {
+        const validTechnicianId = validateUUID(technicianId);
+        if (!validTechnicianId) {
+          return {
+            content: [{
+              type: "text",
+              text: "❌ ID tecnico non valido. L'ID deve essere un UUID valido."
+            }]
+          };
+        }
+      }
+
+      // Sanitize notes if provided
+      if (notes) {
+        notes = sanitizeHtml(notes);
+      }
+
       // Find existing booking
       const existingBooking = await prisma.booking.findUnique({
         where: { id: bookingId },
@@ -561,7 +675,7 @@ server.tool(
       };
 
     } catch (error) {
-      console.error('Error modifying booking:', error);
+      // console.error('Error modifying booking:', error);
       return {
         content: [{
           type: "text",
@@ -578,6 +692,22 @@ server.tool(
   CancelBookingSchema,
   async ({ bookingId, reason }) => {
     try {
+      // Validate booking ID
+      const validBookingId = validateUUID(bookingId);
+      if (!validBookingId) {
+        return {
+          content: [{
+            type: "text",
+            text: "❌ ID prenotazione non valido. L'ID deve essere un UUID valido."
+          }]
+        };
+      }
+
+      // Sanitize reason if provided
+      if (reason) {
+        reason = sanitizeHtml(reason);
+      }
+
       const booking = await prisma.booking.findUnique({
         where: { id: bookingId },
         include: {
@@ -627,7 +757,7 @@ server.tool(
       };
 
     } catch (error) {
-      console.error('Error cancelling booking:', error);
+      // console.error('Error cancelling booking:', error);
       return {
         content: [{
           type: "text",
@@ -644,6 +774,56 @@ server.tool(
   GetBookingsSchema,
   async ({ date, from, to, status, technicianId }) => {
     try {
+      // Validate dates
+      if (date) {
+        const validDate = validateDate(date);
+        if (!validDate) {
+          return {
+            content: [{
+              type: "text",
+              text: "❌ Data non valida. Usa il formato YYYY-MM-DD."
+            }]
+          };
+        }
+      }
+      
+      if (from) {
+        const validFrom = validateDate(from);
+        if (!validFrom) {
+          return {
+            content: [{
+              type: "text",
+              text: "❌ Data 'from' non valida. Usa il formato YYYY-MM-DD."
+            }]
+          };
+        }
+      }
+      
+      if (to) {
+        const validTo = validateDate(to);
+        if (!validTo) {
+          return {
+            content: [{
+              type: "text",
+              text: "❌ Data 'to' non valida. Usa il formato YYYY-MM-DD."
+            }]
+          };
+        }
+      }
+
+      // Validate technician ID if provided
+      if (technicianId) {
+        const validTechnicianId = validateUUID(technicianId);
+        if (!validTechnicianId) {
+          return {
+            content: [{
+              type: "text",
+              text: "❌ ID tecnico non valido. L'ID deve essere un UUID valido."
+            }]
+          };
+        }
+      }
+
       const whereClause: any = {
         status: { in: ['SCHEDULED', 'COMPLETED', 'CANCELLED'] }
       };
@@ -716,7 +896,7 @@ server.tool(
       };
 
     } catch (error) {
-      console.error('Error getting bookings:', error);
+      // console.error('Error getting bookings:', error);
       return {
         content: [{
           type: "text",

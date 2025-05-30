@@ -133,7 +133,7 @@ export function AppointmentsList() {
         setAppointments(sortedData)
       }
     } catch (error) {
-      console.error('Error fetching appointments:', error)
+      // console.error('Error fetching appointments:', error)
     } finally {
       setLoading(false)
     }
@@ -150,7 +150,7 @@ export function AppointmentsList() {
         })))
       }
     } catch (error) {
-      console.error('Error fetching technicians:', error)
+      // console.error('Error fetching technicians:', error)
     }
   }
 
@@ -227,7 +227,7 @@ export function AppointmentsList() {
         toast.error('Errore durante l\'aggiornamento dell\'appuntamento')
       }
     } catch (error) {
-      console.error('Error updating appointment:', error)
+      // console.error('Error updating appointment:', error)
       toast.error('Errore durante l\'aggiornamento dell\'appuntamento')
     } finally {
       setLoading(false)
@@ -264,7 +264,7 @@ export function AppointmentsList() {
         toast.error('Errore durante l\'eliminazione dell\'appuntamento')
       }
     } catch (error) {
-      console.error('Error deleting appointment:', error)
+      // console.error('Error deleting appointment:', error)
       toast.error('Errore durante l\'eliminazione dell\'appuntamento')
     } finally {
       setLoading(false)
@@ -302,7 +302,7 @@ export function AppointmentsList() {
         toast.error(data.error || 'Errore durante l\'aggiornamento dello stato')
       }
     } catch (error) {
-      console.error('Error updating status:', error)
+      // console.error('Error updating status:', error)
       toast.error('Errore durante l\'aggiornamento dello stato')
     } finally {
       setLoading(false)

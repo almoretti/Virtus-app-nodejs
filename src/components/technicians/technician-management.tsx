@@ -64,7 +64,7 @@ export function TechnicianManagement() {
         setAvailableUsers(available)
       }
     } catch (error) {
-      console.error("Error fetching data:", error)
+      // console.error("Error fetching data:", error)
     } finally {
       setLoading(false)
     }
@@ -101,7 +101,7 @@ export function TechnicianManagement() {
         cancelEditing()
       }
     } catch (error) {
-      console.error("Error updating technician:", error)
+      // console.error("Error updating technician:", error)
     }
   }
 
@@ -127,7 +127,7 @@ export function TechnicianManagement() {
         setNewColor("#3B82F6")
       }
     } catch (error) {
-      console.error("Error adding technician:", error)
+      // console.error("Error adding technician:", error)
     }
   }
 
@@ -148,7 +148,7 @@ export function TechnicianManagement() {
         fetchData()
       }
     } catch (error) {
-      console.error("Error toggling technician status:", error)
+      // console.error("Error toggling technician status:", error)
     }
   }
 

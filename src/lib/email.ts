@@ -6,11 +6,11 @@ const apiInstance = new brevo.TransactionalEmailsApi()
 // Set the API key
 const apiKey = process.env.BREVO_API_KEY
 if (!apiKey) {
-  console.error('BREVO_API_KEY is not set in environment variables')
+  // console.error('BREVO_API_KEY is not set in environment variables')
   throw new Error('BREVO_API_KEY is not configured')
 }
 
-console.log('Using Brevo API key:', apiKey.substring(0, 10) + '...')
+// console.log('Using Brevo API key:', apiKey.substring(0, 10) + '...')
 
 apiInstance.setApiKey(
   brevo.TransactionalEmailsApiApiKeys.apiKey,
@@ -151,16 +151,16 @@ export async function sendInvitationEmail({
     }
 
     const result = await apiInstance.sendTransacEmail(sendSmtpEmail)
-    console.log('Email sent successfully:', result.response)
+    // console.log('Email sent successfully:', result.response)
     return true
   } catch (error: any) {
-    console.error('Error sending email:', error)
+    // console.error('Error sending email:', error)
     if (error.statusCode === 401) {
-      console.error('Authentication failed. Please check your Brevo API key.')
-      console.error('Current API key starts with:', process.env.BREVO_API_KEY?.substring(0, 10))
+      // console.error('Authentication failed. Please check your Brevo API key.')
+      // console.error('Current API key starts with:', process.env.BREVO_API_KEY?.substring(0, 10))
     }
     if (error.body) {
-      console.error('Error details:', error.body)
+      // console.error('Error details:', error.body)
     }
     throw error
   }
@@ -188,10 +188,10 @@ export async function sendTestEmail(to: string) {
     ]
 
     const result = await apiInstance.sendTransacEmail(sendSmtpEmail)
-    console.log('Test email sent successfully:', result.response)
+    // console.log('Test email sent successfully:', result.response)
     return true
   } catch (error) {
-    console.error('Error sending test email:', error)
+    // console.error('Error sending test email:', error)
     throw error
   }
 }
