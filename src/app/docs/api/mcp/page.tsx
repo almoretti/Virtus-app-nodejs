@@ -13,7 +13,7 @@ export default function MCPDocsPage() {
     setTimeout(() => setCopiedSection(null), 2000)
   }
 
-  const n8nCurlExample = `curl -X POST 'http://tuodominio.com/api/mcp?sessionId={{$guid}}' \\
+  const n8nCurlExample = `curl -X POST 'https://virtus-app-nodejs-production.up.railway.app/api/mcp?sessionId={{$guid}}' \\
 -H 'Authorization: Bearer IL_TUO_TOKEN_API' \\
 -H 'Content-Type: application/json' \\
 -d '{

@@ -29,7 +29,7 @@ export default function AuthApiPage() {
 
       <h3>Esempio cURL</h3>
       <CodeBlock language="bash">{`curl -H "Authorization: Bearer vb_your_token_here" \\
-     https://tuodominio.com/api/bookings`}</CodeBlock>
+     https://virtus-app-nodejs-production.up.railway.app/api/bookings`}</CodeBlock>
 
       <h3>Esempio JavaScript</h3>
       <CodeBlock language="javascript">{`const response = await fetch('/api/bookings', {

@@ -128,7 +128,7 @@ export default function InvitationsApiPage() {
       <p>
         Il link di invito ha questo formato:
       </p>
-      <CodeBlock language="text">{`https://tuodominio.com/auth/accept-invitation?token=abc123...`}</CodeBlock>
+      <CodeBlock language="text">{`https://virtus-app-nodejs-production.up.railway.app/auth/accept-invitation?token=abc123...`}</CodeBlock>
 
       <h2>Email Template</h2>
       <p>

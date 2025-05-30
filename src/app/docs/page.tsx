@@ -15,7 +15,7 @@ export default function DocsPage() {
 
       <h3>Base URL</h3>
       <pre className="not-prose">
-        <code>{`https://tuodominio.com/api`}</code>
+        <code>{`https://virtus-app-nodejs-production.up.railway.app/api`}</code>
       </pre>
 
       <h3>Autenticazione</h3>
