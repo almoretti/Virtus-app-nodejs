@@ -226,20 +226,9 @@ export async function GET(request: NextRequest) {
         start(controller) {
           console.log('SSE stream started');
           
-          // Send initial connection message
-          const welcomeMessage = `data: ${JSON.stringify({
-            jsonrpc: "2.0",
-            method: "notifications/initialized", 
-            params: {
-              sessionId,
-              serverInfo: {
-                name: "Virtus Booking MCP Server",
-                version: "1.0.0"
-              }
-            }
-          })}\n\n`;
-          
-          controller.enqueue(new TextEncoder().encode(welcomeMessage));
+          // Send endpoint event as required by MCP SSE specification
+          const endpointEvent = `event: endpoint\ndata: /api/mcp/sse?sessionId=${sessionId}\n\n`;
+          controller.enqueue(new TextEncoder().encode(endpointEvent));
           
           // Handle incoming messages via a message queue
           const messageQueue: any[] = [];
@@ -252,8 +241,8 @@ export async function GET(request: NextRequest) {
               // Process message through MCP server
               const response = await server.request(message);
               
-              // Send response via SSE
-              const responseText = `data: ${JSON.stringify(response)}\n\n`;
+              // Send response via SSE as message event
+              const responseText = `event: message\ndata: ${JSON.stringify(response)}\n\n`;
               controller.enqueue(new TextEncoder().encode(responseText));
               
             } catch (error) {
@@ -269,7 +258,7 @@ export async function GET(request: NextRequest) {
                 }
               };
               
-              const errorText = `data: ${JSON.stringify(errorResponse)}\n\n`;
+              const errorText = `event: message\ndata: ${JSON.stringify(errorResponse)}\n\n`;
               controller.enqueue(new TextEncoder().encode(errorText));
             }
           }
@@ -298,11 +287,7 @@ export async function GET(request: NextRequest) {
           // Send periodic ping to keep connection alive
           const pingInterval = setInterval(() => {
             try {
-              const ping = `data: ${JSON.stringify({
-                jsonrpc: "2.0",
-                method: "notifications/ping",
-                params: { timestamp: new Date().toISOString() }
-              })}\n\n`;
+              const ping = `: ping ${new Date().toISOString()}\n\n`;
               controller.enqueue(new TextEncoder().encode(ping));
             } catch (error) {
               console.error('Error sending ping:', error);
@@ -399,11 +384,11 @@ export async function POST(request: NextRequest) {
         console.log('Routing message through active SSE connection');
         context.messageProcessor(message);
         
-        return NextResponse.json({
-          jsonrpc: "2.0",
-          result: { status: "queued" },
-          id: message.id
-        }, { headers: corsHeaders });
+        // Return empty response body for SSE - response will come via SSE stream
+        return new Response(null, { 
+          status: 200, 
+          headers: corsHeaders 
+        });
         
       } else {
         // Direct processing for standalone requests

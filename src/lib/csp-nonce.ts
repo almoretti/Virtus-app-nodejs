@@ -53,7 +53,7 @@ export function getCSPWithNonce(nonce: string): string {
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
       font-src 'self' https://fonts.gstatic.com;
       img-src 'self' data: https: blob:;
-      connect-src 'self' https://accounts.google.com https://apis.google.com ws: wss:;
+      connect-src 'self' https://accounts.google.com https://apis.google.com https://n8n.moretti.cc ws: wss:;
       frame-src 'self' https://accounts.google.com;
       object-src 'none';
       base-uri 'self';
@@ -68,7 +68,7 @@ export function getCSPWithNonce(nonce: string): string {
     style-src 'self' 'nonce-${nonce}' 'unsafe-inline' https://fonts.googleapis.com;
     font-src 'self' https://fonts.gstatic.com;
     img-src 'self' data: https://cdn.jsdelivr.net blob:;
-    connect-src 'self' https://accounts.google.com https://apis.google.com;
+    connect-src 'self' https://accounts.google.com https://apis.google.com https://n8n.moretti.cc;
     frame-src 'self' https://accounts.google.com;
     object-src 'none';
     base-uri 'self';
