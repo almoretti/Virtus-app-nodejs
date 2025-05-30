@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateApiAuth } from '@/lib/api-auth';
-import { setSessionContext, removeSessionContext } from '@/mcp/mcp-context';
+import { setSessionContext, removeSessionContext, getSessionContext } from '@/mcp/mcp-context';
 import { handleToolCall } from '@/mcp/tool-handlers';
 
 // Dynamic import helper to avoid SDK initialization issues
@@ -217,14 +217,9 @@ export async function GET(request: NextRequest) {
 
     try {
       // Create MCP server instance with dynamic imports
-      const { server, SSEServerTransport } = await createMCPServer(sessionId, auth);
+      const { server } = await createMCPServer(sessionId, auth);
       
-      console.log('Creating SSE transport...');
-      
-      // Create SSE transport
-      const transport = new SSEServerTransport('/api/mcp/sse', server);
-      
-      console.log('Starting SSE server...');
+      console.log('Creating custom SSE stream for Next.js...');
       
       // Create the SSE response stream
       const stream = new ReadableStream({
@@ -233,43 +228,102 @@ export async function GET(request: NextRequest) {
           
           // Send initial connection message
           const welcomeMessage = `data: ${JSON.stringify({
-            type: 'connection',
-            status: 'connected',
-            sessionId,
-            timestamp: new Date().toISOString()
+            jsonrpc: "2.0",
+            method: "notifications/initialized", 
+            params: {
+              sessionId,
+              serverInfo: {
+                name: "Virtus Booking MCP Server",
+                version: "1.0.0"
+              }
+            }
           })}\n\n`;
           
           controller.enqueue(new TextEncoder().encode(welcomeMessage));
           
-          // Set up the transport's message handler
-          transport.onmessage = (message) => {
+          // Handle incoming messages via a message queue
+          const messageQueue: any[] = [];
+          let isProcessing = false;
+          
+          async function processMessage(message: any) {
             try {
-              const messageText = `data: ${JSON.stringify(message)}\n\n`;
-              controller.enqueue(new TextEncoder().encode(messageText));
+              console.log('Processing MCP message:', message.method);
+              
+              // Process message through MCP server
+              const response = await server.request(message);
+              
+              // Send response via SSE
+              const responseText = `data: ${JSON.stringify(response)}\n\n`;
+              controller.enqueue(new TextEncoder().encode(responseText));
+              
             } catch (error) {
-              console.error('Error sending SSE message:', error);
+              console.error('Error processing MCP message:', error);
+              
+              // Send error response
+              const errorResponse = {
+                jsonrpc: "2.0",
+                id: message.id,
+                error: {
+                  code: -32603,
+                  message: error instanceof Error ? error.message : "Internal server error"
+                }
+              };
+              
+              const errorText = `data: ${JSON.stringify(errorResponse)}\n\n`;
+              controller.enqueue(new TextEncoder().encode(errorText));
             }
-          };
+          }
           
-          // Handle transport errors
-          transport.onerror = (error) => {
-            console.error('SSE Transport error:', error);
-            controller.error(error);
-          };
+          async function processQueue() {
+            if (isProcessing || messageQueue.length === 0) return;
+            
+            isProcessing = true;
+            while (messageQueue.length > 0) {
+              const message = messageQueue.shift();
+              await processMessage(message);
+            }
+            isProcessing = false;
+          }
           
-          // Start the transport
-          transport.start().catch((error) => {
-            console.error('Failed to start SSE transport:', error);
-            controller.error(error);
+          // Store message processor in session context for POST handler
+          setSessionContext(sessionId, {
+            user: auth.user!,
+            scopes: auth.scopes || [],
+            messageProcessor: (message: any) => {
+              messageQueue.push(message);
+              processQueue();
+            }
           });
+          
+          // Send periodic ping to keep connection alive
+          const pingInterval = setInterval(() => {
+            try {
+              const ping = `data: ${JSON.stringify({
+                jsonrpc: "2.0",
+                method: "notifications/ping",
+                params: { timestamp: new Date().toISOString() }
+              })}\n\n`;
+              controller.enqueue(new TextEncoder().encode(ping));
+            } catch (error) {
+              console.error('Error sending ping:', error);
+              clearInterval(pingInterval);
+            }
+          }, 30000);
+          
+          // Store interval for cleanup
+          (controller as any).pingInterval = pingInterval;
         },
         
         cancel() {
           console.log('SSE stream cancelled for session:', sessionId);
-          removeSessionContext(sessionId);
-          if (transport) {
-            transport.close?.();
+          
+          // Clear ping interval
+          const pingInterval = (this as any).pingInterval;
+          if (pingInterval) {
+            clearInterval(pingInterval);
           }
+          
+          removeSessionContext(sessionId);
         }
       });
 
@@ -337,13 +391,29 @@ export async function POST(request: NextRequest) {
     console.log('Handling MCP message via POST:', message.method);
     
     try {
-      // Create MCP server for this request
-      const { server } = await createMCPServer(sessionId, auth);
+      // Get session context and message processor
+      const context = sessionId ? getSessionContext(sessionId) : null;
       
-      // Process the message through the server
-      const response = await server.request(message);
-      
-      return NextResponse.json(response, { headers: corsHeaders });
+      if (context?.messageProcessor) {
+        // If SSE connection exists, route through SSE
+        console.log('Routing message through active SSE connection');
+        context.messageProcessor(message);
+        
+        return NextResponse.json({
+          jsonrpc: "2.0",
+          result: { status: "queued" },
+          id: message.id
+        }, { headers: corsHeaders });
+        
+      } else {
+        // Direct processing for standalone requests
+        console.log('Processing message directly (no SSE connection)');
+        
+        const { server } = await createMCPServer(sessionId, auth);
+        const response = await server.request(message);
+        
+        return NextResponse.json(response, { headers: corsHeaders });
+      }
       
     } catch (error) {
       console.error('MCP POST message handling error:', error);
