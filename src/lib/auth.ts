@@ -5,13 +5,6 @@ import { Role } from "@prisma/client"
 import { prisma } from "./db"
 import { getImpersonation } from "./impersonation-store"
 
-// Log the environment variables (remove in production)
-console.log('Auth Config:', {
-  clientId: process.env.GOOGLE_CLIENT_ID?.substring(0, 30) + '...',
-  hasSecret: !!process.env.GOOGLE_CLIENT_SECRET,
-  nextAuthUrl: process.env.NEXTAUTH_URL,
-  nodeEnv: process.env.NODE_ENV
-})
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as any,
@@ -29,7 +22,58 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   debug: process.env.NODE_ENV === "development",
+  session: {
+    strategy: "database",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  cookies: {
+    sessionToken: {
+      name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production'
+      }
+    }
+  },
+  pages: {
+    signIn: '/auth/signin',
+    error: '/auth/error',
+  },
   callbacks: {
+    async signIn({ user, account, profile }) {
+      if (account?.provider === "google") {
+        try {
+          // Check if user exists
+          const existingUser = await prisma.user.findUnique({
+            where: { email: user.email! }
+          });
+
+          if (!existingUser) {
+            // For new users, check if they have an invitation
+            const invitation = await prisma.userInvitation.findUnique({
+              where: { 
+                email: user.email!,
+                acceptedAt: null
+              }
+            });
+
+            // If no invitation and no existing user, only allow specific emails
+            const allowedEmails = ['alessandro@moretti.cc', 'admin@virtus.com'];
+            if (!invitation && !allowedEmails.includes(user.email!)) {
+              return false; // Reject sign in
+            }
+          }
+
+          return true;
+        } catch (error) {
+          console.error('SignIn error:', error);
+          return false;
+        }
+      }
+      return true;
+    },
     async session({ session, token, user }) {
       if (session.user) {
         const userId = user?.id || token?.sub
