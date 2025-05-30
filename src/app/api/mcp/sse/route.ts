@@ -8,12 +8,17 @@ async function loadMCPClasses() {
   try {
     const [
       { Server: McpServer },
-      { SSEServerTransport }
+      { SSEServerTransport },
+      {
+        ListToolsRequestSchema,
+        CallToolRequestSchema
+      }
     ] = await Promise.all([
       import('@modelcontextprotocol/sdk/server/index.js'),
-      import('@modelcontextprotocol/sdk/server/sse.js')
+      import('@modelcontextprotocol/sdk/server/sse.js'),
+      import('@modelcontextprotocol/sdk/types.js')
     ]);
-    return { McpServer, SSEServerTransport };
+    return { McpServer, SSEServerTransport, ListToolsRequestSchema, CallToolRequestSchema };
   } catch (error) {
     console.error('Failed to load MCP SDK classes:', error);
     throw error;
@@ -28,7 +33,7 @@ let sseTransportInstance: any = null;
 async function createMCPServer(sessionId: string, auth: any) {
   try {
     console.log('Loading MCP SDK classes dynamically...');
-    const { McpServer, SSEServerTransport } = await loadMCPClasses();
+    const { McpServer, SSEServerTransport, ListToolsRequestSchema, CallToolRequestSchema } = await loadMCPClasses();
     
     console.log('Creating MCP Server instance...');
     const server = new McpServer(
@@ -43,9 +48,9 @@ async function createMCPServer(sessionId: string, auth: any) {
       }
     );
 
-    // Tool: Check availability
+    // List tools handler
     server.setRequestHandler(
-      { method: "tools/list" },
+      ListToolsRequestSchema,
       async () => {
         return {
           tools: [
@@ -132,26 +137,9 @@ async function createMCPServer(sessionId: string, auth: any) {
       }
     );
 
-    // Add initialize handler (required by MCP protocol)
-    server.setRequestHandler(
-      { method: "initialize" },
-      async () => {
-        return {
-          protocolVersion: "2024-11-05",
-          capabilities: {
-            tools: {}
-          },
-          serverInfo: {
-            name: "Virtus Booking MCP Server",
-            version: "1.0.0"
-          }
-        };
-      }
-    );
-
     // Add tool call handler
     server.setRequestHandler(
-      { method: "tools/call" },
+      CallToolRequestSchema,
       async (request) => {
         try {
           // Set auth context for this session
