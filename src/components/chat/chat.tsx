@@ -61,30 +61,25 @@ export function Chat({ currentUser }: ChatProps) {
     setIsLoading(true)
 
     try {
-      // Send message directly to n8n webhook
-      const webhookUrl = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'https://n8n.moretti.cc/webhook/f2d9fc80-ccdb-4bf6-ac48-27ada5830139'
+      // Send message directly to n8n webhook using GET (as configured in n8n)
+      const baseUrl = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'https://n8n.moretti.cc/webhook/f2d9fc80-ccdb-4bf6-ac48-27ada5830139'
+      
+      // Create simple query parameters for GET request
+      const params = new URLSearchParams({
+        message: content,
+        sessionId: sessionId,
+        userId: currentUser?.email || 'anonymous',
+        userName: currentUser?.name || 'Utente',
+        timestamp: new Date().toISOString()
+      })
+      
+      const webhookUrl = `${baseUrl}?${params.toString()}`
       
       const response = await fetch(webhookUrl, {
-        method: 'POST',
+        method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: content,
-          sessionId: sessionId,
-          userId: currentUser?.email || 'anonymous',
-          userName: currentUser?.name || 'Utente',
-          conversationHistory: messages.map(msg => ({
-            role: msg.role,
-            content: msg.content
-          })),
-          timestamp: new Date().toISOString(),
-          context: {
-            platform: 'Virtus Booking System',
-            language: 'Italian',
-            capabilities: ['check_availability', 'create_booking', 'modify_booking', 'cancel_booking', 'get_bookings']
-          }
-        })
+          'Accept': 'application/json',
+        }
       })
       
       if (!response.ok) {
