@@ -1,4 +1,5 @@
 import { prisma } from './db.js';
+import { createHash } from 'crypto';
 
 export interface AuthResult {
   success: boolean;
@@ -16,9 +17,13 @@ export async function validateApiToken(token: string): Promise<AuthResult> {
       return { success: false, error: 'Invalid token format' };
     }
 
-    // Find API token
+    // Hash the token to match what's stored in the database
+    const hashedToken = createHash('sha256').update(token).digest('hex');
+    console.log('Hashed token:', hashedToken.substring(0, 15) + '...');
+
+    // Find API token by hash
     const apiToken = await prisma.apiToken.findUnique({
-      where: { token },
+      where: { token: hashedToken },
       include: { user: true }
     });
 
