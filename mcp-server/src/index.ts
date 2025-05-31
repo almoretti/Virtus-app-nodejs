@@ -176,21 +176,24 @@ app.get('/mcp/sse', async (req: any, res: any) => {
 
     console.log('SSE Authentication successful for user:', auth.user?.email);
 
+    // Set up SSE headers before creating transport
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no' // Disable Nginx buffering
+    });
+
     // Create MCP server instance
     const server = createMCPServer();
     
     // Create SSE transport
     const transport = new SSEServerTransport('/mcp/sse', res as any);
     
-    // Connect server to transport
+    // Connect server to transport (this automatically starts the transport)
     await server.connect(transport);
     
     console.log('MCP Server connected to SSE transport');
-    
-    // Start the transport
-    await transport.start();
-    
-    console.log('SSE transport started successfully');
 
     // Handle client disconnect
     req.on('close', async () => {
@@ -200,9 +203,12 @@ app.get('/mcp/sse', async (req: any, res: any) => {
 
   } catch (error) {
     console.error('SSE connection error:', error);
-    res.status(500).json({ 
-      error: 'Failed to establish SSE connection: ' + (error instanceof Error ? error.message : 'Unknown error')
-    });
+    // Only send error response if headers haven't been sent
+    if (!res.headersSent) {
+      res.status(500).json({ 
+        error: 'Failed to establish SSE connection: ' + (error instanceof Error ? error.message : 'Unknown error')
+      });
+    }
   }
 });
 
