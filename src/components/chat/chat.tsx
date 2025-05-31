@@ -6,6 +6,7 @@ import { ChatMessage } from "./chat-message"
 import { ChatInput } from "./chat-input"
 import { Card } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
+import { api } from "@/lib/api-client"
 
 interface Message {
   id: string
@@ -61,29 +62,40 @@ export function Chat({ currentUser }: ChatProps) {
     setIsLoading(true)
 
     try {
-      // Send message directly to n8n webhook (CORS configured on n8n side)
-      const webhookUrl = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'https://n8n.moretti.cc/webhook/f2d9fc80-ccdb-4bf6-ac48-27ada5830139'
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: content,
-          sessionId: sessionId,
-          userId: currentUser?.email || 'anonymous',
-          userName: currentUser?.name || 'Utente',
-          conversationHistory: messages.map(msg => ({
-            role: msg.role,
-            content: msg.content
-          })),
-          timestamp: new Date().toISOString(),
-          context: {
-            platform: 'Virtus Booking System',
-            language: 'Italian',
-            capabilities: ['check_availability', 'create_booking', 'modify_booking', 'cancel_booking', 'get_bookings']
-          }
+      // Send message to n8n webhook using GET with query parameters
+      const baseUrl = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'https://n8n.moretti.cc/webhook/f2d9fc80-ccdb-4bf6-ac48-27ada5830139'
+      
+      // Encode the message data as URL parameters
+      const params = new URLSearchParams({
+        message: content,
+        sessionId: sessionId,
+        userId: currentUser?.email || 'anonymous',
+        userName: currentUser?.name || 'Utente',
+        timestamp: new Date().toISOString(),
+        // For complex data, we'll JSON stringify and encode
+        conversationHistory: JSON.stringify(messages.map(msg => ({
+          role: msg.role,
+          content: msg.content
+        }))),
+        context: JSON.stringify({
+          platform: 'Virtus Booking System',
+          language: 'Italian',
+          capabilities: ['check_availability', 'create_booking', 'modify_booking', 'cancel_booking', 'get_bookings']
         })
+      })
+      
+      const webhookUrl = `${baseUrl}?${params.toString()}`
+      
+      console.log('Sending GET request to n8n webhook')
+      console.log('Origin:', window.location.origin)
+      
+      const response = await fetch(webhookUrl, {
+        method: 'GET',
+        mode: 'cors',
+        credentials: 'omit',
+        headers: {
+          'Accept': 'application/json',
+        }
       })
       
       if (!response.ok) {
