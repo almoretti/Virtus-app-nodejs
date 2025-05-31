@@ -6,7 +6,6 @@ import { ChatMessage } from "./chat-message"
 import { ChatInput } from "./chat-input"
 import { Card } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
-import { api } from "@/lib/api-client"
 
 interface Message {
   id: string
@@ -62,23 +61,36 @@ export function Chat({ currentUser }: ChatProps) {
     setIsLoading(true)
 
     try {
-      // Send message to our proxy endpoint which forwards to n8n
-      const data = await api.post('/api/chat/webhook', {
-        message: content,
-        sessionId: sessionId,
-        userId: currentUser?.email || 'anonymous',
-        userName: currentUser?.name || 'Utente',
-        conversationHistory: messages.map(msg => ({
-          role: msg.role,
-          content: msg.content
-        })),
-        timestamp: new Date().toISOString(),
-        context: {
-          platform: 'Virtus Booking System',
-          language: 'Italian',
-          capabilities: ['check_availability', 'create_booking', 'modify_booking', 'cancel_booking', 'get_bookings']
-        }
+      // Send message directly to n8n webhook (CORS configured on n8n side)
+      const webhookUrl = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'https://n8n.moretti.cc/webhook/f2d9fc80-ccdb-4bf6-ac48-27ada5830139'
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: content,
+          sessionId: sessionId,
+          userId: currentUser?.email || 'anonymous',
+          userName: currentUser?.name || 'Utente',
+          conversationHistory: messages.map(msg => ({
+            role: msg.role,
+            content: msg.content
+          })),
+          timestamp: new Date().toISOString(),
+          context: {
+            platform: 'Virtus Booking System',
+            language: 'Italian',
+            capabilities: ['check_availability', 'create_booking', 'modify_booking', 'cancel_booking', 'get_bookings']
+          }
+        })
       })
+      
+      if (!response.ok) {
+        throw new Error('Errore nella risposta del webhook')
+      }
+      
+      const data = await response.json()
       
       // Extract the assistant's response from n8n webhook response
       // The response structure depends on your n8n workflow setup
