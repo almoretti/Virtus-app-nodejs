@@ -234,19 +234,37 @@ app.get('/mcp/sse', async (req: any, res: any) => {
     // Create MCP server instance with auth context
     const server = createMCPServer();
     
-    // Create SSE transport - let it handle headers
+    // Create SSE transport
     const transport = new SSEServerTransport('/mcp/sse', res);
     
-    // Connect server to transport (this automatically starts the transport)
-    await server.connect(transport);
-    
-    console.log('MCP Server connected to SSE transport');
-
-    // Handle client disconnect
-    req.on('close', async () => {
-      console.log('SSE client disconnected');
+    try {
+      // Connect server to transport (this automatically starts the transport)
+      await server.connect(transport);
+      
+      console.log('MCP Server connected to SSE transport');
+      
+      // The transport is now handling the connection
+      // Wait for client disconnect
+      await new Promise<void>((resolve) => {
+        req.on('close', () => {
+          console.log('SSE client disconnected');
+          resolve();
+        });
+        
+        req.on('error', (error: any) => {
+          console.error('SSE request error:', error);
+          resolve();
+        });
+      });
+      
+      // Clean up
       await transport.close();
-    });
+      await server.close();
+      
+    } catch (connectError) {
+      console.error('Failed to connect transport:', connectError);
+      throw connectError;
+    }
 
   } catch (error) {
     console.error('SSE connection error:', error);
