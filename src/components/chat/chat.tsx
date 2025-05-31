@@ -62,47 +62,26 @@ export function Chat({ currentUser }: ChatProps) {
     setIsLoading(true)
 
     try {
-      // Send message to n8n webhook using GET with query parameters
-      const baseUrl = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'https://n8n.moretti.cc/webhook/f2d9fc80-ccdb-4bf6-ac48-27ada5830139'
-      
-      // Encode the message data as URL parameters
-      const params = new URLSearchParams({
+      // Use the proxy endpoint to avoid CORS and handle complex data
+      const response = await api.post('/api/chat/webhook', {
         message: content,
         sessionId: sessionId,
         userId: currentUser?.email || 'anonymous',
         userName: currentUser?.name || 'Utente',
-        timestamp: new Date().toISOString(),
-        // For complex data, we'll JSON stringify and encode
-        conversationHistory: JSON.stringify(messages.map(msg => ({
+        conversationHistory: messages.map(msg => ({
           role: msg.role,
           content: msg.content
-        }))),
-        context: JSON.stringify({
+        })),
+        timestamp: new Date().toISOString(),
+        context: {
           platform: 'Virtus Booking System',
           language: 'Italian',
           capabilities: ['check_availability', 'create_booking', 'modify_booking', 'cancel_booking', 'get_bookings']
-        })
-      })
-      
-      const webhookUrl = `${baseUrl}?${params.toString()}`
-      
-      console.log('Sending GET request to n8n webhook')
-      console.log('Origin:', window.location.origin)
-      
-      const response = await fetch(webhookUrl, {
-        method: 'GET',
-        mode: 'cors',
-        credentials: 'omit',
-        headers: {
-          'Accept': 'application/json',
         }
       })
       
-      if (!response.ok) {
-        throw new Error('Errore nella risposta del webhook')
-      }
-      
-      const data = await response.json()
+      // The api client returns the data directly, not a Response object
+      const data = response
       
       // Extract the assistant's response from n8n webhook response
       // The response structure depends on your n8n workflow setup

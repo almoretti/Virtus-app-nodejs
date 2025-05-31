@@ -30,23 +30,45 @@ export async function POST(request: NextRequest) {
     const webhookUrl = process.env.N8N_WEBHOOK_URL || 
       'https://n8n.moretti.cc/webhook/f2d9fc80-ccdb-4bf6-ac48-27ada5830139'
 
-    // Forward the request to n8n
-    const response = await fetch(webhookUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        // Add any additional headers n8n might need
-      },
-      body: JSON.stringify({
-        ...body,
-        // Add user info for context
-        user: {
-          id: session.user?.id,
-          email: session.user?.email,
-          name: session.user?.name
+    // Check if webhook expects GET or POST (configurable)
+    const useGetMethod = process.env.N8N_WEBHOOK_METHOD === 'GET' || true // Default to GET based on your n8n config
+    
+    let response: Response
+    
+    if (useGetMethod) {
+      // For GET requests, send only essential data as query params
+      const params = new URLSearchParams({
+        message: body.message,
+        sessionId: body.sessionId || 'default',
+        userId: session.user?.email || 'anonymous',
+        userName: session.user?.name || 'User'
+      })
+      
+      const urlWithParams = `${webhookUrl}?${params.toString()}`
+      
+      response = await fetch(urlWithParams, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
         }
       })
-    })
+    } else {
+      // For POST requests, send full payload
+      response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...body,
+          user: {
+            id: session.user?.id,
+            email: session.user?.email,
+            name: session.user?.name
+          }
+        })
+      })
+    }
 
     // Check if n8n responded successfully
     if (!response.ok) {
