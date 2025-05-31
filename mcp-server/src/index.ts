@@ -176,19 +176,11 @@ app.get('/mcp/sse', async (req: any, res: any) => {
 
     console.log('SSE Authentication successful for user:', auth.user?.email);
 
-    // Set up SSE headers before creating transport
-    res.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-      'X-Accel-Buffering': 'no' // Disable Nginx buffering
-    });
-
-    // Create MCP server instance
+    // Create MCP server instance with auth context
     const server = createMCPServer();
     
-    // Create SSE transport
-    const transport = new SSEServerTransport('/mcp/sse', res as any);
+    // Create SSE transport - let it handle headers
+    const transport = new SSEServerTransport('/mcp/sse', res);
     
     // Connect server to transport (this automatically starts the transport)
     await server.connect(transport);
