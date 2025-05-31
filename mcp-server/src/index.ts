@@ -21,12 +21,13 @@ const PORT = process.env.PORT || 3001;
 const HOST = process.env.HOST || '0.0.0.0';
 
 // CORS configuration
-const corsOrigins = process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000'];
+const corsOrigins = process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000', '*'];
 app.use(cors({
   origin: corsOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['X-Session-Id']
 }));
 
 app.use(express.json({ limit: '10mb' }));
@@ -234,16 +235,28 @@ app.get('/mcp/sse', async (req: any, res: any) => {
     // Create MCP server instance with auth context
     const server = createMCPServer();
     
-    // Create SSE transport
-    const transport = new SSEServerTransport('/mcp/sse', res);
+    // Create SSE transport with messages endpoint
+    const transport = new SSEServerTransport('/mcp/messages', res);
+    
+    // Store the transport and auth info by session ID
+    const sessionId = transport.sessionId;
+    (global as any).mcpSessions = (global as any).mcpSessions || {};
+    (global as any).mcpSessions[sessionId] = { transport, server, auth };
+    
+    console.log(`Created SSE session: ${sessionId}`);
     
     try {
-      // Connect server to transport (this automatically starts the transport)
+      // Set up onclose handler
+      transport.onclose = () => {
+        console.log(`SSE transport closed for session ${sessionId}`);
+        delete (global as any).mcpSessions[sessionId];
+      };
+      
+      // Connect server to transport
       await server.connect(transport);
       
       console.log('MCP Server connected to SSE transport');
       
-      // The transport is now handling the connection
       // Wait for client disconnect
       await new Promise<void>((resolve) => {
         req.on('close', () => {
@@ -258,11 +271,11 @@ app.get('/mcp/sse', async (req: any, res: any) => {
       });
       
       // Clean up
-      await transport.close();
-      await server.close();
+      delete (global as any).mcpSessions[sessionId];
       
     } catch (connectError) {
       console.error('Failed to connect transport:', connectError);
+      delete (global as any).mcpSessions[sessionId];
       throw connectError;
     }
 
@@ -277,7 +290,56 @@ app.get('/mcp/sse', async (req: any, res: any) => {
   }
 });
 
-// HTTP POST endpoint for MCP messages (fallback)
+// Messages endpoint for SSE transport
+app.post('/mcp/messages', async (req: any, res: any) => {
+  try {
+    const sessionId = req.query.sessionId as string;
+    
+    if (!sessionId) {
+      return res.status(400).json({
+        jsonrpc: "2.0",
+        error: {
+          code: -32600,
+          message: "Missing sessionId query parameter"
+        },
+        id: null
+      });
+    }
+    
+    const session = (global as any).mcpSessions?.[sessionId];
+    if (!session) {
+      return res.status(400).json({
+        jsonrpc: "2.0",
+        error: {
+          code: -32600,
+          message: "Invalid session ID"
+        },
+        id: null
+      });
+    }
+    
+    console.log(`Processing message for session ${sessionId}:`, req.body.method);
+    
+    // Pass the message to the transport
+    await session.transport.handleMessage(req.body);
+    
+    // Send empty response (transport handles sending responses via SSE)
+    res.status(200).send('');
+    
+  } catch (error) {
+    console.error('Error handling message:', error);
+    res.status(500).json({
+      jsonrpc: "2.0",
+      error: {
+        code: -32603,
+        message: "Internal server error"
+      },
+      id: req.body?.id || null
+    });
+  }
+});
+
+// HTTP POST endpoint for MCP messages (fallback for non-SSE clients)
 app.post('/mcp/sse', async (req: any, res: any) => {
   try {
     // Validate authentication
@@ -473,7 +535,8 @@ app.use((req, res) => {
       'GET /health',
       'GET /mcp/info', 
       'GET /mcp/sse',
-      'POST /mcp/sse'
+      'POST /mcp/sse',
+      'POST /mcp/messages?sessionId=...'
     ]
   });
 });
