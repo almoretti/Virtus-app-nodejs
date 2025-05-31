@@ -61,9 +61,9 @@ export function ChatMessage({ message, currentUser }: ChatMessageProps) {
                   ul: ({ children }) => <ul className="mb-2 list-disc pl-4">{children}</ul>,
                   ol: ({ children }) => <ol className="mb-2 list-decimal pl-4">{children}</ol>,
                   li: ({ children }) => <li className="mb-1">{children}</li>,
-                  code: ({ children, ...props }) => {
-                    const match = /language-(\w+)/.exec(props.className || '')
-                    const isInline = !match
+                  code: ({ children, className, ...props }) => {
+                    const match = /language-(\w+)/.exec(className || '')
+                    const isInline = !match && !props.node?.properties?.className
                     return isInline ? (
                       <code className="px-1 py-0.5 rounded bg-muted text-sm">{children}</code>
                     ) : (
