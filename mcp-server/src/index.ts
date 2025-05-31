@@ -10,6 +10,7 @@ import { z } from 'zod';
 import dotenv from 'dotenv';
 import { validateApiToken, extractTokenFromRequest } from './auth.js';
 import { handleToolCall } from './tools.js';
+import { prisma } from './db.js';
 import type { Request, Response } from 'express';
 
 // Load environment variables
