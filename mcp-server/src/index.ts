@@ -31,13 +31,28 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 
 // Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'healthy', 
-    timestamp: new Date().toISOString(),
-    service: 'virtus-mcp-server',
-    version: '1.0.0'
-  });
+app.get('/health', async (req, res) => {
+  try {
+    // Test database connection
+    const tokenCount = await prisma.apiToken.count();
+    res.json({ 
+      status: 'healthy', 
+      timestamp: new Date().toISOString(),
+      service: 'virtus-mcp-server',
+      version: '1.0.0',
+      database: 'connected',
+      apiTokens: tokenCount
+    });
+  } catch (error) {
+    res.json({ 
+      status: 'unhealthy', 
+      timestamp: new Date().toISOString(),
+      service: 'virtus-mcp-server',
+      version: '1.0.0',
+      database: 'error',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
 });
 
 // Tool schemas for MCP

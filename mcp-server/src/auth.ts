@@ -9,7 +9,10 @@ export interface AuthResult {
 
 export async function validateApiToken(token: string): Promise<AuthResult> {
   try {
+    console.log('Validating token:', token ? `${token.substring(0, 15)}...` : 'null');
+    
     if (!token || !token.startsWith('vb_')) {
+      console.log('Token validation failed: does not start with vb_');
       return { success: false, error: 'Invalid token format' };
     }
 
@@ -20,6 +23,7 @@ export async function validateApiToken(token: string): Promise<AuthResult> {
     });
 
     if (!apiToken) {
+      console.log('Token not found in database');
       return { success: false, error: 'Invalid token' };
     }
 
@@ -31,6 +35,8 @@ export async function validateApiToken(token: string): Promise<AuthResult> {
       return { success: false, error: 'Token expired' };
     }
 
+    console.log('Token found for user:', apiToken.user.email);
+    
     // Update last used timestamp
     await prisma.apiToken.update({
       where: { id: apiToken.id },
