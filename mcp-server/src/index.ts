@@ -122,14 +122,14 @@ function createMCPServer(): Server {
       tools: [
         {
           name: "check_availability",
-          description: "Controlla la disponibilità dei tecnici per una data specifica",
+          description: "Controlla la disponibilità dei tecnici. Se non specifichi una data, mostra l'elenco di tutti i tecnici con i loro ID.",
           inputSchema: {
             type: "object",
             properties: {
-              date: { type: "string", description: "Data in formato YYYY-MM-DD" },
+              date: { type: "string", description: "Data in formato YYYY-MM-DD (opzionale - se omessa mostra solo l'elenco tecnici)" },
               technicianId: { type: "string", description: "ID specifico del tecnico (opzionale)" }
             },
-            required: ["date"]
+            required: []
           }
         },
         {

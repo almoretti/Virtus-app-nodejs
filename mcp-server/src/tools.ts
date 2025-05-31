@@ -54,11 +54,16 @@ function formatBookingInfo(booking: any): string {
 - **Telefono**: ${booking.customer.phone}
 - **Email**: ${booking.customer.email || 'Non specificata'}
 - **Indirizzo**: ${booking.customer.address}
-- **Tecnico**: ${booking.technician?.user?.name || booking.technician?.user?.email}
+- **Tecnico**: ${booking.technician?.user?.name || booking.technician?.user?.email} (ID: ${booking.technicianId})
 - **Tipo Installazione**: ${booking.installationType.name}
 - **Stato**: ${booking.status}
 - **Note**: ${booking.notes || 'Nessuna nota'}
 - **Creata il**: ${format(new Date(booking.createdAt), "d MMMM yyyy 'alle' HH:mm", { locale: it })}
+
+[DATI TECNICI PER MODIFICHE]
+- booking_id: ${booking.id}
+- technician_id: ${booking.technicianId}
+- slot_code: ${booking.slot}
 `;
 }
 
@@ -68,34 +73,55 @@ function formatAvailabilityInfo(availability: any): string {
     const date = format(new Date(availability.date), "d MMMM yyyy", { locale: it });
     let result = `**Disponibilità per ${date}**\n\n`;
     
+    // First list all technicians with their IDs
+    result += `**Tecnici disponibili:**\n`;
+    availability.technicians.forEach((tech: any) => {
+      result += `- ${tech.name} (ID: ${tech.id})\n`;
+    });
+    result += "\n";
+    
+    // Then show availability by slot
     Object.entries(availability.availability).forEach(([slot, techs]) => {
       const slotName = slotDisplayMapping[slot as TimeSlot];
-      result += `**${slotName}:**\n`;
+      result += `**${slotName} (${slot}):**\n`;
       
       availability.technicians.forEach((tech: any) => {
         const available = (techs as Record<string, boolean>)[tech.id];
-        const status = available ? "✅ Disponibile" : "❌ Occupato";
-        result += `- ${tech.name}: ${status}\n`;
+        const status = available ? "✅ DISPONIBILE" : "❌ OCCUPATO";
+        result += `- ${tech.name} (ID: ${tech.id}): ${status}\n`;
       });
       result += "\n";
     });
+    
+    // Add booking instructions
+    result += `\n**Per prenotare usa questi dati:**\n`;
+    result += `- date: "${availability.date}" (formato YYYY-MM-DD)\n`;
+    result += `- slot: "MORNING", "AFTERNOON" o "EVENING"\n`;
+    result += `- technicianId: uno degli ID tecnico sopra elencati\n`;
     
     return result;
   } else {
     // Date range response  
     let result = `**Disponibilità dal ${availability.from} al ${availability.to}**\n\n`;
     
+    // First list all technicians with their IDs
+    result += `**Tecnici nel sistema:**\n`;
+    availability.technicians.forEach((tech: any) => {
+      result += `- ${tech.name} (ID: ${tech.id})\n`;
+    });
+    result += "\n";
+    
     Object.entries(availability.availability).forEach(([dateKey, dayAvailability]) => {
       const date = format(new Date(dateKey), "d MMMM yyyy", { locale: it });
-      result += `**${date}:**\n`;
+      result += `**${date} (${dateKey}):**\n`;
       
       Object.entries(dayAvailability as Record<string, Record<string, boolean>>).forEach(([techId, slots]) => {
         const tech = availability.technicians.find((t: any) => t.id === techId);
         if (tech) {
-          result += `- **${tech.name}**: `;
+          result += `- **${tech.name}** (ID: ${techId}): `;
           const availableSlots = Object.entries(slots)
             .filter(([_, available]) => available)
-            .map(([slot, _]) => slotDisplayMapping[slot as TimeSlot]);
+            .map(([slot, _]) => `${slotDisplayMapping[slot as TimeSlot]} (${slot})`);
           
           if (availableSlots.length > 0) {
             result += availableSlots.join(", ");
@@ -107,6 +133,11 @@ function formatAvailabilityInfo(availability: any): string {
       });
       result += "\n";
     });
+    
+    result += `\n**Per prenotare usa questi dati:**\n`;
+    result += `- date: una delle date sopra in formato YYYY-MM-DD\n`;
+    result += `- slot: "MORNING", "AFTERNOON" o "EVENING"\n`;
+    result += `- technicianId: uno degli ID tecnico sopra elencati\n`;
     
     return result;
   }
@@ -133,6 +164,29 @@ export async function handleToolCall(params: any, auth: any) {
 
 async function checkAvailability(args: any, auth: any) {
   const { date, technicianId } = args;
+  
+  // If no date provided, just list all technicians
+  if (!date) {
+    const technicians = await prisma.technician.findMany({
+      where: { active: true },
+      include: { user: true }
+    });
+    
+    let result = "**Tecnici disponibili nel sistema:**\n\n";
+    technicians.forEach((tech: any) => {
+      result += `- **${tech.user.name || tech.user.email}**\n`;
+      result += `  - ID: ${tech.id}\n`;
+      result += `  - Colore: ${tech.color}\n\n`;
+    });
+    result += "\nUsa questo tool con una data specifica per vedere la disponibilità.";
+    
+    return {
+      content: [{
+        type: "text",
+        text: result
+      }]
+    };
+  }
   
   if (!validateDate(date)) {
     return {
@@ -245,7 +299,7 @@ async function createBooking(args: any, auth: any) {
     return {
       content: [{
         type: "text",
-        text: "❌ ID tecnico non valido. L'ID deve essere un UUID valido."
+        text: "❌ ID tecnico non valido. L'ID deve essere un UUID valido. Usa prima 'check_availability' per ottenere gli ID dei tecnici."
       }]
     };
   }
