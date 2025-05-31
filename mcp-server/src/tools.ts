@@ -13,9 +13,13 @@ const CustomerSchema = z.object({
 });
 
 // Utility functions
-function validateUUID(uuid: string): boolean {
+function validateUUID(id: string): boolean {
+  // Prisma uses CUID format, not standard UUID
+  // CUID format: starts with 'c' followed by lowercase alphanumeric characters
+  const cuidRegex = /^c[a-z0-9]{24,}$/;
+  // Also accept standard UUID format just in case
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(uuid);
+  return cuidRegex.test(id) || uuidRegex.test(id);
 }
 
 function validateDate(dateString: string): boolean {
@@ -299,7 +303,7 @@ async function createBooking(args: any, auth: any) {
     return {
       content: [{
         type: "text",
-        text: "❌ ID tecnico non valido. L'ID deve essere un UUID valido. Usa prima 'check_availability' per ottenere gli ID dei tecnici."
+        text: `❌ ID tecnico non valido: ${technicianId}. L'ID deve essere nel formato CUID (inizia con 'c' seguito da caratteri alfanumerici). Usa prima 'check_availability' per ottenere gli ID corretti dei tecnici.`
       }]
     };
   }
@@ -452,7 +456,7 @@ async function modifyBooking(args: any, auth: any) {
     return {
       content: [{
         type: "text",
-        text: "❌ ID prenotazione non valido."
+        text: `❌ ID prenotazione non valido: ${bookingId}. L'ID deve essere nel formato CUID.`
       }]
     };
   }
@@ -598,7 +602,7 @@ async function cancelBooking(args: any, auth: any) {
     return {
       content: [{
         type: "text",
-        text: "❌ ID prenotazione non valido."
+        text: `❌ ID prenotazione non valido: ${bookingId}. L'ID deve essere nel formato CUID.`
       }]
     };
   }
