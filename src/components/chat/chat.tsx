@@ -90,6 +90,11 @@ export function Chat({ currentUser }: ChatProps) {
       // Handle different possible response formats from n8n
       if (typeof data === 'string') {
         responseContent = data
+      } else if (Array.isArray(data) && data.length > 0 && data[0].output) {
+        // n8n returns array with output field
+        responseContent = data[0].output
+      } else if (data.output) {
+        responseContent = data.output
       } else if (data.message) {
         responseContent = data.message
       } else if (data.response) {
