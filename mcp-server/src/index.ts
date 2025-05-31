@@ -334,6 +334,44 @@ app.post('/mcp/sse', async (req: any, res: any) => {
   }
 });
 
+// Debug endpoint (remove in production!)
+app.get('/debug/tokens', async (req, res) => {
+  try {
+    const tokens = await prisma.apiToken.findMany({
+      select: {
+        id: true,
+        name: true,
+        token: true,
+        isActive: true,
+        createdAt: true,
+        user: {
+          select: {
+            email: true
+          }
+        }
+      }
+    });
+    
+    res.json({
+      database_url: process.env.DATABASE_URL ? 
+        process.env.DATABASE_URL.replace(/\/\/[^:]+:[^@]+@/, '//***:***@') : 
+        'not set',
+      token_count: tokens.length,
+      tokens: tokens.map(t => ({
+        ...t,
+        token: t.token.substring(0, 15) + '...'
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      error: error instanceof Error ? error.message : 'Database error',
+      database_url: process.env.DATABASE_URL ? 
+        process.env.DATABASE_URL.replace(/\/\/[^:]+:[^@]+@/, '//***:***@') : 
+        'not set'
+    });
+  }
+});
+
 // API info endpoint
 app.get('/mcp/info', (req, res) => {
   res.json({
