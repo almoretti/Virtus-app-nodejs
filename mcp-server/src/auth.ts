@@ -48,8 +48,18 @@ export async function validateApiToken(token: string): Promise<AuthResult> {
   }
 }
 
-export function extractTokenFromRequest(headers: Headers): string | null {
-  const authHeader = headers.get('authorization');
+export function extractTokenFromRequest(req: any): string | null {
+  // Handle both Express request objects and Headers objects
+  let authHeader: string | null = null;
+  
+  if (req.headers && typeof req.headers === 'object') {
+    // Express request object
+    authHeader = req.headers.authorization || req.headers.Authorization || null;
+  } else if (req.get && typeof req.get === 'function') {
+    // Headers object with get method
+    authHeader = req.get('authorization');
+  }
+  
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return null;
   }

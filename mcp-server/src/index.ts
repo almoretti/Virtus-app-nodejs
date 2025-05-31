@@ -143,9 +143,11 @@ function createMCPServer(): Server {
 app.get('/mcp/sse', async (req: any, res: any) => {
   try {
     console.log('SSE connection request received');
+    console.log('Request headers:', req.headers);
     
     // Validate authentication
-    const token = extractTokenFromRequest(req as any);
+    const token = extractTokenFromRequest(req);
+    console.log('Extracted token:', token ? `${token.substring(0, 10)}...` : 'null');
     if (!token) {
       return res.status(401).json({ error: 'Missing authorization token' });
     }
@@ -192,7 +194,7 @@ app.get('/mcp/sse', async (req: any, res: any) => {
 app.post('/mcp/sse', async (req: any, res: any) => {
   try {
     // Validate authentication
-    const token = extractTokenFromRequest(req as any);
+    const token = extractTokenFromRequest(req);
     if (!token) {
       return res.status(401).json({ error: 'Missing authorization token' });
     }
