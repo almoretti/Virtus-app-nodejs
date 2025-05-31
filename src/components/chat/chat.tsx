@@ -32,7 +32,7 @@ export function Chat({ currentUser }: ChatProps) {
     }
   ])
   const [isLoading, setIsLoading] = useState(false)
-  const scrollAreaRef = useRef<HTMLDivElement>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
   
   // Generate a unique session ID for this chat session
   const sessionId = useMemo(() => {
@@ -41,12 +41,17 @@ export function Chat({ currentUser }: ChatProps) {
     return `chat-${userPart}-${timePart}`
   }, [currentUser?.email])
 
+  const scrollToBottom = () => {
+    // Small delay to ensure DOM has updated
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    }, 100)
+  }
+
   useEffect(() => {
-    // Scroll to bottom when new messages are added
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight
-    }
-  }, [messages])
+    // Scroll to bottom when new messages are added or loading state changes
+    scrollToBottom()
+  }, [messages, isLoading])
 
   const handleSendMessage = async (content: string) => {
     // Add user message
@@ -158,7 +163,7 @@ export function Chat({ currentUser }: ChatProps) {
       </div>
 
       <ScrollArea className="flex-1 p-4">
-        <div ref={scrollAreaRef} className="space-y-4">
+        <div className="space-y-4">
           {messages.map((message) => (
             <ChatMessage
               key={message.id}
@@ -172,6 +177,7 @@ export function Chat({ currentUser }: ChatProps) {
               L'assistente sta pensando...
             </div>
           )}
+          <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
 
