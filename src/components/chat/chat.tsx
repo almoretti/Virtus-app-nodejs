@@ -112,13 +112,23 @@ export function Chat({ currentUser }: ChatProps) {
       }
       setMessages(prev => [...prev, assistantMessage])
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error calling n8n webhook:', error)
+      
+      // Extract specific error message if available
+      let errorContent = "Mi dispiace, sto avendo difficoltà tecniche. Per favore riprova tra qualche istante o contatta il supporto."
+      
+      if (error?.error) {
+        errorContent = error.error
+        if (error.details) {
+          errorContent += `\n\n${error.details}`
+        }
+      }
       
       // Fallback response on error
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: "Mi dispiace, sto avendo difficoltà tecniche. Per favore riprova tra qualche istante o contatta il supporto.",
+        content: errorContent,
         role: "assistant",
         timestamp: new Date()
       }

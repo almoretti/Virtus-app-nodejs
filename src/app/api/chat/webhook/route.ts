@@ -76,6 +76,22 @@ export async function POST(request: NextRequest) {
       const errorText = await response.text()
       console.error('n8n error response:', errorText)
       
+      // Parse n8n error if possible
+      try {
+        const errorData = JSON.parse(errorText)
+        if (errorData.errorMessage?.includes('No Respond to Webhook node found')) {
+          return NextResponse.json(
+            { 
+              error: 'Il servizio chat non è configurato correttamente. Contatta l\'amministratore.',
+              details: 'Workflow n8n richiede un nodo "Respond to Webhook"'
+            },
+            { status: 503 }
+          )
+        }
+      } catch (e) {
+        // Not JSON, continue with generic error
+      }
+      
       return NextResponse.json(
         { error: 'Errore nella comunicazione con il servizio chat' },
         { status: response.status }
