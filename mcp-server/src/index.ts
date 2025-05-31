@@ -116,38 +116,93 @@ function createMCPServer(): Server {
 
   // Register request handlers using proper MCP SDK API
   server.setRequestHandler(ListToolsRequestSchema, async () => {
+    console.log('Processing tools/list request');
     return {
       tools: [
         {
           name: "check_availability",
           description: "Controlla la disponibilità dei tecnici per una data specifica",
-          inputSchema: CheckAvailabilitySchema._def
+          inputSchema: {
+            type: "object",
+            properties: {
+              date: { type: "string", description: "Data in formato YYYY-MM-DD" },
+              technicianId: { type: "string", description: "ID specifico del tecnico (opzionale)" }
+            },
+            required: ["date"]
+          }
         },
         {
           name: "create_booking",
           description: "Crea una nuova prenotazione", 
-          inputSchema: CreateBookingSchema._def
+          inputSchema: {
+            type: "object",
+            properties: {
+              date: { type: "string", description: "Data appuntamento in formato YYYY-MM-DD" },
+              slot: { type: "string", enum: ["MORNING", "AFTERNOON", "EVENING"], description: "Fascia oraria" },
+              technicianId: { type: "string", description: "ID del tecnico" },
+              customer: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  phone: { type: "string" },
+                  email: { type: "string" },
+                  address: { type: "string" }
+                },
+                required: ["name", "phone", "address"]
+              },
+              installationType: { type: "string", description: "Tipo di installazione" },
+              notes: { type: "string", description: "Note aggiuntive (opzionale)" }
+            },
+            required: ["date", "slot", "technicianId", "customer", "installationType"]
+          }
         },
         {
           name: "modify_booking",
           description: "Modifica una prenotazione esistente",
-          inputSchema: ModifyBookingSchema._def
+          inputSchema: {
+            type: "object",
+            properties: {
+              bookingId: { type: "string", description: "ID della prenotazione" },
+              date: { type: "string", description: "Nuova data (opzionale)" },
+              slot: { type: "string", enum: ["MORNING", "AFTERNOON", "EVENING"], description: "Nuova fascia oraria (opzionale)" },
+              technicianId: { type: "string", description: "Nuovo tecnico (opzionale)" },
+              notes: { type: "string", description: "Note aggiornate (opzionale)" }
+            },
+            required: ["bookingId"]
+          }
         },
         {
           name: "cancel_booking",
           description: "Cancella una prenotazione",
-          inputSchema: CancelBookingSchema._def
+          inputSchema: {
+            type: "object",
+            properties: {
+              bookingId: { type: "string", description: "ID della prenotazione" },
+              reason: { type: "string", description: "Motivo cancellazione (opzionale)" }
+            },
+            required: ["bookingId"]
+          }
         },
         {
           name: "get_bookings",
           description: "Recupera le prenotazioni con filtri opzionali",
-          inputSchema: GetBookingsSchema._def
+          inputSchema: {
+            type: "object",
+            properties: {
+              date: { type: "string", description: "Data specifica (YYYY-MM-DD)" },
+              from: { type: "string", description: "Data inizio range (YYYY-MM-DD)" },
+              to: { type: "string", description: "Data fine range (YYYY-MM-DD)" },
+              status: { type: "string", enum: ["SCHEDULED", "COMPLETED", "CANCELLED"], description: "Stato prenotazione" },
+              technicianId: { type: "string", description: "ID tecnico specifico" }
+            }
+          }
         }
       ]
     };
   });
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    console.log('Processing tools/call request:', request.params.name);
     const result = await handleToolCall(request.params, {});
     return result;
   });
